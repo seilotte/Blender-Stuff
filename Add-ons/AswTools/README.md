@@ -2,6 +2,8 @@
 
 Random collection of tools for Arc System Works games.
 
+https://github.com/seilotte/Blender-Stuff/assets/133937845/967c6cb1-ee28-4288-8531-154a72665a95
+
 ## Installation
 1. Download the `AswTools.zip` from above.
 1. Open blender and select `Edit -> Preferences -> Add-ons -> Install... `
