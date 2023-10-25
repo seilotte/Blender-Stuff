@@ -154,7 +154,7 @@ class SEI_PT_node_tools(Panel):
         col.operator('sei.hide_sockets_group_inputs', text='Fix Group Inputs', icon='NODE')
 
         col = layout.column(align=True)
-        col.prop(sei_vars, 'image_color_space', icon='IMAGE_RGB', icon_only=True)
+        col.prop(sei_vars, 'image_color_space', text='', icon='IMAGE_RGB')
         col.operator('sei.assign_image_space', text='Assign Image Spaces', icon='NODE_SEL')
 
 #========= Scene Tools
