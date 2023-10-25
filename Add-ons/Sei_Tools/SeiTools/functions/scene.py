@@ -1,15 +1,8 @@
-def scene_hide_sockets_from_group_inputs(context):
-    tree = context.space_data.node_tree
-    if tree.nodes.active: # Check recursively until we find the tree.
-        while tree.nodes.active != context.active_node:
-            tree = tree.nodes.active.node_tree
+import bpy
 
-            for node in tree.nodes:
-                if node.type != 'GROUP_INPUT': continue
-                if node.mute: continue
-
-                for socket in node.outputs:
-                    socket.hide = True
+def scene_assign_view_layer_name():
+    for obj in bpy.data.objects:
+        obj.data.name = obj.name
 
 def scene_simplify_modifiers(self, context):
     sei_vars = context.scene.sei_variables

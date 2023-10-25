@@ -3,6 +3,7 @@ import bpy
 from bpy.types import Operator, Panel
 from .functions.armatures import *
 from .functions.bones import *
+from .functions.nodes import *
 from .functions.scene import *
 
 # Global panel UI properties.
@@ -16,7 +17,7 @@ class SeiOperator:
     bl_region_type = 'UI'
     bl_options = {'REGISTER', 'UNDO'}
 
-###===Rig Tools===
+#========= Rig Tools
 
 class SEI_OT_stick_infront_wire(SeiOperator, Operator):
     bl_idname = 'sei.stick_infront_wire'
@@ -29,15 +30,6 @@ class SEI_OT_stick_infront_wire(SeiOperator, Operator):
 
     def execute(self, context):
         armature_stick_infront_wire(context)
-        return {'FINISHED'}
-
-class SEI_OT_iniatie_rigify_layers(SeiOperator, Operator):
-    bl_idname = 'sei.initiate_rigify_layers'
-    bl_label = "Initiate Rigify Layers"
-    bl_description = "Set-up rigify layers in the selected armatures"
-
-    def execute(self, context):
-        armature_initiate_rigify_layers(context)
         return {'FINISHED'}
 
 # Assign armature.
@@ -60,14 +52,13 @@ class SEI_PT_rig_tools(SeiPanel, Panel):
         layout = self.layout
 
         row = layout.row(align=True)
-        row.operator('sei.stick_infront_wire', text='Stick|In Front|Wire', icon='ARMATURE_DATA')
-        row.operator('sei.initiate_rigify_layers', text='Init Rigify', icon_value=241)
+        row.operator('sei.stick_infront_wire', text='Stick | In Front | Wire', icon='ARMATURE_DATA')
 
         col = layout.column(align=True)
         col.prop(sei_vars, 'armature', text='', icon='MOD_ARMATURE')
         col.operator('sei.assign_armature', text='Assign Armature', icon='DOT')
 
-#===Bone Properites===
+#=== Bone Properites
 
 class SEI_OT_select_children(SeiOperator, Operator):
     bl_idname = 'sei.select_children'
@@ -96,38 +87,9 @@ class SEI_OT_tail_to_head_parent(SeiOperator, Operator):
         bone_tail_to_head_parent(context)
         return{'FINISHED'}
 
-class SEI_OT_assign_rig_type(SeiOperator, Operator):
-    bl_idname = 'sei.assign_rig_type'
-    bl_label = 'Assign Rig Type'
-
-    @classmethod # If it is not an armature or in pose mode, disable.
-    def poll(self, context):
-        if not context.object:
-            return False
-        return context.object.type == 'ARMATURE' \
-            and context.active_object.mode == 'POSE'
-
-    def execute(self, context):
-        bone_assign_rig_type(context)
-        return {'FINISHED'}
-
-class SEI_OT_remove_rig_type(SeiOperator, Operator):
-    bl_idname = 'sei.remove_rig_type'
-    bl_label = 'Remove Rig Type'
-
-    @classmethod # If it is not an armature or in pose mode, disable.
-    def poll(self, context):
-        if not context.object:
-            return False
-        return context.object.type == 'ARMATURE' \
-            and context.active_object.mode == 'POSE'
-
-    def execute(self, context):
-        bone_remove_rig_type(context)
-        return {'FINISHED'}
-
 
 class SEI_PT_bone_properties(SeiPanel, Panel):
+    bl_idname = 'SEI_PT_bone_properties'
     bl_label = 'Bone Properties'
     bl_parent_id = 'SEI_PT_rig_tools'
 
@@ -150,28 +112,60 @@ class SEI_PT_bone_properties(SeiPanel, Panel):
         row.prop(context.active_bone,'use_deform', text="Deform")
         row.prop(context.object.data, 'show_axes', text="Axes")
 
-        col = layout.column(align=True)
-        col.prop(sei_vars, 'rig_types', icon='BONE_DATA', icon_only=True)
-        row = col.split(align=True)
-        row.operator('sei.assign_rig_type', text="Assign Rig Type", icon='ADD')
-        row.operator('sei.remove_rig_type', text='Clear Rig Type', icon='REMOVE')
-
-###===Scene Tools===
+#========= Node Tools
 
 class SEI_OT_hide_socket_from_group_inputs(SeiOperator, Operator):
     bl_idname = 'sei.hide_sockets_group_inputs'
     bl_label = 'Fix Group Inputs'
     bl_description = 'Toggle unused node socket from group input nodes'
 
-
     def execute(self, context):
-        scene_hide_sockets_from_group_inputs(context)
+        nodes_hide_sockets_from_group_inputs(context)
 #        self.report({'INFO'}, "Fixed group inputs.")
         return {'FINISHED'}
 
-def sei_button_hide_socket_from_group_inputs(self, context):
-    layout = self.layout
-    layout.operator('sei.hide_sockets_group_inputs', text='Fix Group Inputs', icon='NODE')
+class SEI_OT_assign_image_space(SeiOperator, Operator):
+    bl_idname = 'sei.assign_image_space'
+    bl_label = 'Assign Image Space'
+    bl_description = 'Assign the desired image space to the selected image nodes'
+
+    def execute(self, context):
+        nodes_assign_image_space(context)
+        return {'FINISHED'}
+
+
+class SEI_PT_node_tools(Panel):
+    bl_idname = 'SEI_PT_node_tools'
+    bl_label = 'Node Tools'
+
+    bl_space_type = 'NODE_EDITOR'
+    bl_region_type = "UI"
+    bl_category = "Group"
+
+    @classmethod
+    def poll(cls, context):
+        return context.space_data.edit_tree
+
+    def draw(self, context):
+        sei_vars = context.scene.sei_variables
+        layout = self.layout
+        
+        col = layout.column()
+        col.operator('sei.hide_sockets_group_inputs', text='Fix Group Inputs', icon='NODE')
+
+        col = layout.column(align=True)
+        col.prop(sei_vars, 'image_color_space', icon='IMAGE_RGB', icon_only=True)
+        col.operator('sei.assign_image_space', text='Assign Image Spaces', icon='NODE_SEL')
+
+#========= Scene Tools
+
+class SEI_OT_assign_view_layer_name(SeiOperator, Operator):
+    bl_idname = 'sei.assign_view_layer_name'
+    bl_label = 'Assign View Layer Name'
+
+    def execute(self, context):
+        scene_assign_view_layer_name()
+        return {'FINISHED'}
 
 # Original code, therefore the same license applies.
 # https://github.com/Lateasusual/blender-collection-simplify
@@ -218,6 +212,11 @@ class SEI_PT_scene_tools(SeiPanel, Panel):
         sei_vars = context.scene.sei_variables
         layout = self.layout
 
+        col = layout.column()
+        col.operator("sei.assign_view_layer_name", text="Rename", icon='FILE_TEXT')
+
+        layout.separator()
+
         col = layout.column(align=True)
         col.prop(context.scene.render, "use_simplify", text="Simplify")
         row = col.split(factor=0.4, align=True)
@@ -242,18 +241,19 @@ class SEI_PT_scene_tools(SeiPanel, Panel):
 classes = [
     # Rig Tools.
     SEI_OT_stick_infront_wire,
-    SEI_OT_iniatie_rigify_layers,
     SEI_OT_assign_armature,
     SEI_PT_rig_tools,
     # Rig Tools -> Bone Properties.
     SEI_OT_select_children,
     SEI_OT_bone_parent_offset,
     SEI_OT_tail_to_head_parent,
-    SEI_OT_assign_rig_type,
-    SEI_OT_remove_rig_type,
     SEI_PT_bone_properties,
-    # Scene Tools.
+    # Node Tools.
     SEI_OT_hide_socket_from_group_inputs,
+    SEI_OT_assign_image_space,
+    SEI_PT_node_tools,
+    # Scene Tools.
+    SEI_OT_assign_view_layer_name,
     SEI_OT_simplify_modifiers,
     SEI_PT_scene_tools,
 ]
@@ -262,10 +262,6 @@ def register():
     for cls in classes:
         bpy.utils.register_class(cls)
 
-    bpy.types.NODE_PT_node_tree_interface_inputs.append(sei_button_hide_socket_from_group_inputs)
-
 def unregister():
     for cls in classes:
         bpy.utils.unregister_class(cls)
-
-    bpy.types.NODE_PT_node_tree_interface_inputs.remove(sei_button_hide_socket_from_group_inputs)

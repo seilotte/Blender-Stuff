@@ -1,28 +1,20 @@
 import bpy
 #from bpy.props import EnumProperty, IntProperty, FloatProperty, PointerProperty, BoolProperty, StringProperty
-from bpy.props import PointerProperty, IntProperty, EnumProperty, BoolProperty
+from bpy.props import PointerProperty, EnumProperty, BoolProperty
 
 class SEI_variables(bpy.types.PropertyGroup):
 
     # Rig Tools
     armature: PointerProperty(name="Armature", type=bpy.types.Object)
 
-    # Bone Properties
-    rig_types: EnumProperty(
-        name = 'Rig Types',
-        items = [
-            ('spine', 'Spine_Blenrig.ik', ''),
-            ('head', 'Head', ''),
-            ('armL', 'Arm_L.ik', ''),
-            ('armR', 'Arm_R.ik', ''),
-            ('legL', 'Leg_L.ik', ''),
-            ('legR', 'Leg_R.ik', ''),
-            ('finger', 'Finger', ''),
-            (' ', '--- --- ---', ''),
-            ('super_copy', 'Super_Copy', ''),
-            ('chain', 'Stretchy_Chain', ''),
-            ('tail', 'Tail', ''),
-#            ('', '', ''),
+    # Node Tools
+    image_color_space: EnumProperty(
+        name = 'Colour Space',
+        description = 'Image colour space to use on the node(s)',
+        items = [ # (identifier, name, description)
+            ('sRGB', 'sRGB', ''),
+#            ('Linear', 'Linear', ''),
+            ('Non-Color', 'Non-Color', ''),
         ]
     )
 
