@@ -179,10 +179,11 @@ class SEI_OT_simplify_modifiers(SeiOperator, Operator):
         return context.scene
 
     modifier_properties = {
-        'SUBSURF': ('simplify_v_subsurf', 'simplify_r_subsurf', 'MOD_SUBSURF'),
-        'NODES': ('simplify_v_nodes', 'simplify_r_nodes', 'GEOMETRY_NODES'),
-        'MASK': ('simplify_v_mask', 'simplify_r_mask', 'MOD_MASK'),
         'ARMATURE': ('simplify_v_armature', 'simplify_r_armature', 'MOD_ARMATURE'),
+        'SUBSURF': ('simplify_v_subsurf', 'simplify_r_subsurf', 'MOD_SUBSURF'),
+        'MASK': ('simplify_v_mask', 'simplify_r_mask', 'MOD_MASK'),
+        'NODES': ('simplify_v_nodes', 'simplify_r_nodes', 'GEOMETRY_NODES'),
+        'SOLIDIFY': ('simplify_v_solidify', 'simplify_r_solidify', 'MOD_SOLIDIFY'),
         'DATA_TRANSFER': ('simplify_v_dtransfer', 'simplify_r_dtransfer', 'MOD_DATA_TRANSFER'),
         'CORRECTIVE_SMOOTH': ('simplify_v_csmooth', 'simplify_r_csmooth', 'MOD_SMOOTH'),
         'SHRINKWRAP': ('simplify_v_shrinkwrap', 'simplify_r_shrinkwrap', 'MOD_SHRINKWRAP'),

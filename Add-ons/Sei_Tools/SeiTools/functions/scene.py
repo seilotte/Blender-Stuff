@@ -1,8 +1,11 @@
 import bpy
 
+obj_types_list = ['MESH', 'ARMATURE', 'LIGHT', 'CAMERA',]
+
 def scene_assign_view_layer_name():
     for obj in bpy.data.objects:
-        obj.data.name = obj.name
+        if obj.type in obj_types_list:
+            obj.data.name = obj.name
 
 def scene_simplify_modifiers(self, context):
     sei_vars = context.scene.sei_variables
