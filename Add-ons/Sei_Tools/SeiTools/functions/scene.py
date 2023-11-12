@@ -20,16 +20,11 @@ modifier_properties_list = (
 ('SHRINKWRAP', 'Shrinkwrap', 'MOD_SHRINKWRAP', 'simplify_v_shrinkwrap', 'simplify_r_shrinkwrap'),
 )
 
-def scene_simplify_modifiers_viewport(self, context):
-    for obj in context.selected_objects:
-        if obj.type == 'MESH':
-            for mod in obj.modifiers:
-                if any(mod.type in i for i in modifier_properties_list):
-                    mod.show_viewport = not mod.show_viewport
+def scene_simplify_modifiers(self, context):
+    sei_vars = context.scene.sei_variables
 
-def scene_simplify_modifiers_render(self, context):
-    for obj in context.selected_objects:
-        if obj.type == 'MESH':
-            for mod in obj.modifiers:
-                if any(mod.type in i for i in modifier_properties_list):
-                    mod.show_render = not mod.show_render
+    for obj in (obj for obj in context.selected_objects if obj.type == 'MESH'):
+        for mod in obj.modifiers:
+            list_items = next((m for m in modifier_properties_list if m[0] == mod.type), None)
+            if list_items:
+                mod.show_viewport, mod.show_render = getattr(sei_vars, list_items[3]), getattr(sei_vars, list_items[4])
