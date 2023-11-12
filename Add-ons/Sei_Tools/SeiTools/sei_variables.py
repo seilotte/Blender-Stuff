@@ -1,6 +1,7 @@
 import bpy
 #from bpy.props import EnumProperty, IntProperty, FloatProperty, PointerProperty, BoolProperty, StringProperty
 from bpy.props import PointerProperty, EnumProperty, BoolProperty
+from .functions.scene import *
 
 class SEI_variables(bpy.types.PropertyGroup):
 
@@ -19,22 +20,22 @@ class SEI_variables(bpy.types.PropertyGroup):
     )
 
     # Scene Tools
-    simplify_v_armature: BoolProperty(name='Simplify armature in Viewport', default=True)
-    simplify_r_armature: BoolProperty(name='Simplify armature in Render', default=True)
-    simplify_v_subsurf: BoolProperty(name='Simplify subsurf in Viewport', default=True)
-    simplify_r_subsurf: BoolProperty(name='Simplify subsurf in Render', default=True)
-    simplify_v_mask: BoolProperty(name='Simplify mask in Viewport', default=True)
-    simplify_r_mask: BoolProperty(name='Simplify mask in Render', default=True)
-    simplify_v_nodes: BoolProperty(name='Simplify geonodes in Viewport')
-    simplify_r_nodes: BoolProperty(name='Simplify geonodes in Render', default=True)
-    simplify_v_solidify: BoolProperty(name='Simplify solidify in Viewport')
-    simplify_r_solidify: BoolProperty(name='Simplify solidify in Render', default=True)
-    simplify_v_dtransfer: BoolProperty(name='Simplify dtransfer in Viewport')
-    simplify_r_dtransfer: BoolProperty(name='Simplify dtransfer in Render', default=True)
-    simplify_v_csmooth: BoolProperty(name='Simplify csmooth in Viewport')
-    simplify_r_csmooth: BoolProperty(name='Simplify csmooth in Render', default=True)
-    simplify_v_shrinkwrap: BoolProperty(name='Simplify shrinkwrap in Viewport')
-    simplify_r_shrinkwrap: BoolProperty(name='Simplify shrinkwrap in Render', default=True)
+    simplify_v_armature: BoolProperty(name='Simplify armature in Viewport', default=True, update=scene_simplify_modifiers_viewport)
+    simplify_r_armature: BoolProperty(name='Simplify armature in Render', default=True, update=scene_simplify_modifiers_render)
+    simplify_v_subsurf: BoolProperty(name='Simplify subsurf in Viewport', default=True, update=scene_simplify_modifiers_viewport)
+    simplify_r_subsurf: BoolProperty(name='Simplify subsurf in Render', default=True, update=scene_simplify_modifiers_render)
+    simplify_v_mask: BoolProperty(name='Simplify mask in Viewport', default=True, update=scene_simplify_modifiers_viewport)
+    simplify_r_mask: BoolProperty(name='Simplify mask in Render', default=True, update=scene_simplify_modifiers_render)
+    simplify_v_nodes: BoolProperty(name='Simplify geonodes in Viewport', default=True, update=scene_simplify_modifiers_viewport)
+    simplify_r_nodes: BoolProperty(name='Simplify geonodes in Render', default=True, update=scene_simplify_modifiers_render)
+    simplify_v_solidify: BoolProperty(name='Simplify solidify in Viewport', default=True, update=scene_simplify_modifiers_viewport)
+    simplify_r_solidify: BoolProperty(name='Simplify solidify in Render', default=True, update=scene_simplify_modifiers_render)
+    simplify_v_dtransfer: BoolProperty(name='Simplify dtransfer in Viewport', default=True, update=scene_simplify_modifiers_viewport)
+    simplify_r_dtransfer: BoolProperty(name='Simplify dtransfer in Render', default=True, update=scene_simplify_modifiers_render)
+    simplify_v_csmooth: BoolProperty(name='Simplify csmooth in Viewport', default=True, update=scene_simplify_modifiers_viewport)
+    simplify_r_csmooth: BoolProperty(name='Simplify csmooth in Render', default=True, update=scene_simplify_modifiers_render)
+    simplify_v_shrinkwrap: BoolProperty(name='Simplify shrinkwrap in Viewport', default=True, update=scene_simplify_modifiers_viewport)
+    simplify_r_shrinkwrap: BoolProperty(name='Simplify shrinkwrap in Render', default=True, update=scene_simplify_modifiers_render)
 
 #=========
 

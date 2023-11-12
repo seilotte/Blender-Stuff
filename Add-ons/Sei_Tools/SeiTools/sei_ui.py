@@ -167,32 +167,6 @@ class SEI_OT_assign_view_layer_name(SeiOperator, Operator):
         scene_assign_view_layer_name()
         return {'FINISHED'}
 
-# Original code, therefore the same license applies.
-# https://github.com/Lateasusual/blender-collection-simplify
-class SEI_OT_simplify_modifiers(SeiOperator, Operator):
-    bl_idname = 'sei.simplify_modifiers'
-    bl_label = 'Simplify Modifiers'
-    bl_descriptions = 'Show/Hide all modifiers of objects.'
-
-    @classmethod
-    def poll(cls, context):
-        return context.scene
-
-    modifier_properties = {
-        'ARMATURE': ('simplify_v_armature', 'simplify_r_armature', 'MOD_ARMATURE'),
-        'SUBSURF': ('simplify_v_subsurf', 'simplify_r_subsurf', 'MOD_SUBSURF'),
-        'MASK': ('simplify_v_mask', 'simplify_r_mask', 'MOD_MASK'),
-        'NODES': ('simplify_v_nodes', 'simplify_r_nodes', 'GEOMETRY_NODES'),
-        'SOLIDIFY': ('simplify_v_solidify', 'simplify_r_solidify', 'MOD_SOLIDIFY'),
-        'DATA_TRANSFER': ('simplify_v_dtransfer', 'simplify_r_dtransfer', 'MOD_DATA_TRANSFER'),
-        'CORRECTIVE_SMOOTH': ('simplify_v_csmooth', 'simplify_r_csmooth', 'MOD_SMOOTH'),
-        'SHRINKWRAP': ('simplify_v_shrinkwrap', 'simplify_r_shrinkwrap', 'MOD_SHRINKWRAP'),
-    }
-
-    def execute(self, context):
-        scene_simplify_modifiers(self, context)
-        return {'FINISHED'}
-
 
 class SEI_PT_scene_tools(SeiPanel, Panel):
     bl_idname = 'SEI_PT_scene_tools'
@@ -227,15 +201,22 @@ class SEI_PT_scene_tools(SeiPanel, Panel):
         layout.separator()
 
         col = layout.column()
-        for mod_type, (viewport_prop, render_prop, icon_name) in SEI_OT_simplify_modifiers.modifier_properties.items():
-            row = col.split(factor=0.4, align=True)
-            row.label(text=mod_type, icon=icon_name)
-            row.prop(sei_vars, viewport_prop, icon='RESTRICT_VIEW_OFF', icon_only=True)
-            row.prop(sei_vars, render_prop, icon='RESTRICT_RENDER_OFF', icon_only=True)
+        for mod_type, text_name, icon_name, viewport_prop, render_prop in modifier_properties_list:
+            row = col.split(factor=0.1, align=True)
+            row.label(text='', icon=icon_name)
 
-        layout.separator()
-
-        op = layout.operator("sei.simplify_modifiers", text="Reload", icon='FILE_REFRESH')
+            row.prop(
+                sei_vars,
+                viewport_prop,
+                icon = 'RESTRICT_VIEW_OFF' if getattr(sei_vars, viewport_prop) else 'RESTRICT_VIEW_ON',
+                icon_only = True,
+            )
+            row.prop(
+                sei_vars,
+                render_prop,
+                icon = 'RESTRICT_RENDER_OFF' if getattr(sei_vars, render_prop) else 'RESTRICT_RENDER_ON',
+                icon_only = True,
+            )
 
 #===========================
 
@@ -255,7 +236,6 @@ classes = [
     SEI_PT_node_tools,
     # Scene Tools.
     SEI_OT_assign_view_layer_name,
-    SEI_OT_simplify_modifiers,
     SEI_PT_scene_tools,
 ]
 
