@@ -124,6 +124,15 @@ class SEI_OT_hide_socket_from_group_inputs(SeiOperator, Operator):
 #        self.report({'INFO'}, "Fixed group inputs.")
         return {'FINISHED'}
 
+class SEI_OT_copy_active_socket(SeiOperator, Operator):
+    bl_idname = 'sei.copy_active_socket'
+    bl_label = 'Copy Active Socket'
+    bl_description = 'Copy the active socket'
+
+    def execute(self, context):
+        nodes_copy_active_socket(context)
+        return {'FINISHED'}
+
 class SEI_OT_assign_image_space(SeiOperator, Operator):
     bl_idname = 'sei.assign_image_space'
     bl_label = 'Assign Image Space'
@@ -152,6 +161,9 @@ class SEI_PT_node_tools(Panel):
         
         col = layout.column()
         col.operator('sei.hide_sockets_group_inputs', text='Fix Group Inputs', icon='NODE')
+        col.operator('sei.copy_active_socket', text='Copy Socket', icon='NODE')
+
+        layout.separator()
 
         col = layout.column(align=True)
         col.prop(sei_vars, 'image_color_space', text='', icon='IMAGE_RGB')
@@ -232,6 +244,7 @@ classes = [
     SEI_PT_bone_properties,
     # Node Tools.
     SEI_OT_hide_socket_from_group_inputs,
+    SEI_OT_copy_active_socket,
     SEI_OT_assign_image_space,
     SEI_PT_node_tools,
     # Scene Tools.
