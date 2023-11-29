@@ -7,6 +7,11 @@ def scene_assign_view_layer_name():
         if obj.type in obj_types_list:
             obj.data.name = obj.name
 
+def scene_toggle_object_wireframe(context):
+    for obj in context.selected_objects:
+        if obj.type == 'MESH':
+            obj.show_wire = not obj.show_wire
+
 
 modifier_properties_list = (
 # modifier_type, ui_text, ui_icon, boolean_custom, boolean_custom.

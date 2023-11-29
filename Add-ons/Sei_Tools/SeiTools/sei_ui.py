@@ -169,6 +169,14 @@ class SEI_OT_assign_view_layer_name(SeiOperator, Operator):
         scene_assign_view_layer_name()
         return {'FINISHED'}
 
+class SEI_OT_toggle_object_wireframe(SeiOperator, Operator):
+    bl_idname = 'sei.toggle_object_wireframe'
+    bl_label = 'Toggle Object Wireframe'
+
+    def execute(self, context):
+        scene_toggle_object_wireframe(context)
+        return {'FINISHED'}
+
 
 class SEI_PT_scene_tools(SeiPanel, Panel):
     bl_idname = 'SEI_PT_scene_tools'
@@ -191,6 +199,7 @@ class SEI_PT_scene_tools(SeiPanel, Panel):
 
         col = layout.column()
         col.operator("sei.assign_view_layer_name", text="Rename", icon='FILE_TEXT')
+        col.operator("sei.toggle_object_wireframe", text="Wireframe", icon='MOD_WIREFRAME')
 
         layout.separator()
 
@@ -238,6 +247,7 @@ classes = [
     SEI_PT_node_tools,
     # Scene Tools.
     SEI_OT_assign_view_layer_name,
+    SEI_OT_toggle_object_wireframe,
     SEI_PT_scene_tools,
 ]
 
