@@ -17,12 +17,6 @@ def nodes_hide_sockets_from_group_inputs(context):
         for socket in node.outputs:
             socket.hide = True
 
-def nodes_copy_active_socket(context):
-    tree = find_active_node_tree(context)
-
-    active_socket = tree.interface.active
-    tree.interface.copy(active_socket)
-
 def nodes_assign_image_space(context):
     sei_vars = context.scene.sei_variables
     color_space = sei_vars.image_color_space
