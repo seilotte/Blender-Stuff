@@ -201,28 +201,42 @@ class SEI_PT_scene_tools(SeiPanel, Panel):
         col.operator("sei.assign_view_layer_name", text="Rename", icon='FILE_TEXT')
         col.operator("sei.toggle_object_wireframe", text="Wireframe", icon='MOD_WIREFRAME')
 
-        layout.separator()
+#=== Simplify
 
-        box = layout.box()
-        col = box.column(align=True)
-        row = col.split(factor=0.4, align=True)
-        row.label(text='Simplify')
-        row.prop(context.scene.render, "use_simplify", text='')
-        row = col.split(factor=0.4, align=True)
+class SEI_PT_simplify(SeiPanel, Panel):
+    bl_idname = 'SEI_PT_simpify'
+    bl_label = 'Simplify'
+    bl_parent_id = 'SEI_PT_scene_tools'
+
+    def draw_header(self, context):
+        self.layout.prop(context.scene.render, "use_simplify", text="")
+
+    def draw(self, context):
+        layout = self.layout
+        col = layout.column()
+
+        row = col.split(align=True)
         row.label(text='Max Subsurf')
         row.prop(context.scene.render, "simplify_subdivision", text='')
-        row = col.split(factor=0.4, align=True)
+
+        row = col.split(align=True)
         row.label(text='Texture Size Limit')
         row.prop(context.preferences.system, "gl_texture_limit", text='')
 
-        layout.separator()
+#=== Modifiers
 
-        box = layout.box()
-        box.label(text='Modifiers:')
-        col = box.column()
+class SEI_PT_modifiers(SeiPanel, Panel):
+    bl_idname = 'SEI_PT_modifiers'
+    bl_label = 'Modifiers'
+    bl_parent_id = 'SEI_PT_scene_tools'
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        layout = self.layout
+        col = layout.column()
 
         all_modifiers = [(obj.name, mod) for obj in bpy.context.selected_objects if obj.type == 'MESH' for mod in obj.modifiers]
-        sort_modifiers = sorted(all_modifiers, key=lambda x: (x[1].type, x[1].name)) # x[1] = mod
+        sort_modifiers = set(sorted(all_modifiers, key=lambda x: (x[1].type, x[1].name))) # x[1] = mod
         del all_modifiers
 
         for obj_name, mod in sort_modifiers:
@@ -249,10 +263,12 @@ classes = [
     SEI_OT_hide_socket_from_group_inputs,
     SEI_OT_assign_image_space,
     SEI_PT_node_tools,
-    # Scene Tools.
+    # Scene Tools. -> Simplify. -> Modifiers.
     SEI_OT_assign_view_layer_name,
     SEI_OT_toggle_object_wireframe,
     SEI_PT_scene_tools,
+    SEI_PT_simplify,
+    SEI_PT_modifiers,
 ]
 
 def register():
