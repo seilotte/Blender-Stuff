@@ -222,7 +222,7 @@ class SEI_PT_scene_tools(SeiPanel, Panel):
         col = box.column()
 
         all_modifiers = [(obj.name, mod) for obj in bpy.context.selected_objects if obj.type == 'MESH' for mod in obj.modifiers]
-        sort_modifiers = sorted(all_modifiers, key=lambda x: x[1].type) # x[1] = mod
+        sort_modifiers = sorted(all_modifiers, key=lambda x: (x[1].type, x[1].name)) # x[1] = mod
         del all_modifiers
 
         for obj_name, mod in sort_modifiers:
