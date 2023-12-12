@@ -203,31 +203,35 @@ class SEI_PT_scene_tools(SeiPanel, Panel):
 
         layout.separator()
 
-        col = layout.column(align=True)
-        col.prop(context.scene.render, "use_simplify", text="Simplify")
+        box = layout.box()
+        col = box.column(align=True)
+        row = col.split(factor=0.4, align=True)
+        row.label(text='Simplify')
+        row.prop(context.scene.render, "use_simplify", text='')
         row = col.split(factor=0.4, align=True)
         row.label(text='Max Subsurf')
-        row.prop(context.scene.render, "simplify_subdivision", icon='RESTRICT_VIEW_OFF', icon_only=True)
+        row.prop(context.scene.render, "simplify_subdivision", text='')
+        row = col.split(factor=0.4, align=True)
+        row.label(text='Texture Size Limit')
+        row.prop(context.preferences.system, "gl_texture_limit", text='')
 
         layout.separator()
 
-        col = layout.column()
-        for mod_type, text_name, icon_name, viewport_prop, render_prop in modifier_properties_list:
-            row = col.split(factor=0.1, align=True)
-            row.label(text='', icon=icon_name)
+        box = layout.box()
+        box.label(text='Modifiers:')
+        col = box.column()
 
-            row.prop(
-                sei_vars,
-                viewport_prop,
-                icon = 'RESTRICT_VIEW_OFF' if getattr(sei_vars, viewport_prop) else 'RESTRICT_VIEW_ON',
-                icon_only = True,
-            )
-            row.prop(
-                sei_vars,
-                render_prop,
-                icon = 'RESTRICT_RENDER_OFF' if getattr(sei_vars, render_prop) else 'RESTRICT_RENDER_ON',
-                icon_only = True,
-            )
+        all_modifiers = [(obj.name, mod) for obj in bpy.context.selected_objects if obj.type == 'MESH' for mod in obj.modifiers]
+        sort_modifiers = sorted(all_modifiers, key=lambda x: x[1].type) # x[1] = mod
+        del all_modifiers
+
+        for obj_name, mod in sort_modifiers:
+            row = col.row(align=True)
+            row.label(text=f'{mod.name} | {obj_name}', icon_value=layout.icon(mod))
+
+#            for prop in mod.bl_rna.properties: print(prop)
+            row.prop(mod, 'show_viewport', icon_only=True)
+            row.prop(mod, 'show_render', icon_only=True)
 
 #===========================
 
