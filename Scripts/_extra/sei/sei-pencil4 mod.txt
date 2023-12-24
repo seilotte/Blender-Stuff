@@ -1,0 +1,22 @@
+pencil4_viewport.py
+
+#=========================== Sei mod line 565.
+class SEI_PLC4_OT_EnableViewportGeometryNode(bpy.types.Operator):
+    bl_idname = "seipcl4.enable_viewport_geoemtry_node"
+    bl_label = "Enable/Disable Geometry Node"
+    bl_options = {'REGISTER'}
+
+    def execute(self, context):
+#        for obj in context.selected_objects:
+        for obj in bpy.data.objects:
+            if obj.type != 'MESH': continue
+
+            gn_modifier = next((mod for mod in obj.modifiers if mod.type == 'NODES' and mod.node_group and mod.node_group.name == 'p4_gn_Outlines'), None)
+            if gn_modifier:
+                gn_modifier.show_viewport = not gn_modifier.show_viewport
+        return {'FINISHED'}
+
+#=========================== Sei mod line 606
+        box = layout.box()
+        box.operator(...) # Here goes the "Line Preview" operator button.
+        box.operator("seipcl4.enable_viewport_geoemtry_node", icon='GEOMETRY_NODES', text="Enable/Disable")
