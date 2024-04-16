@@ -3,7 +3,7 @@
 The program assumes the object has the following:
 - You need to be in *object mode*!
 - An *active* uv map.       // It will use the active/selected uv map.
-                            // Line 44; Personal use, it uses the first uv.
+                            // Line 47; Personal use, it uses the first uv.
 - An *active* image node.   // It will look in the active material.
 '''
 
@@ -16,16 +16,16 @@ context = bpy.context
 for obj in context.selected_objects:
     if obj.type != 'MESH': continue
 
-#    obj = context.active_object
     mesh = obj.data
 
     mat = obj.active_material
     active_node = mat.node_tree.nodes.active # Both return None.
 
-    if not mat \
-    and not active_node \
-    and not active_node.type == 'TEX_IMAGE' \
-    and not active_node.image: continue
+    if not (mat := obj.active_material) \
+    or not (active_node := mat.node_tree.nodes.active) \
+    or not active_node.type == 'TEX_IMAGE' \
+    or not active_node.image \
+    or len(mesh.uv_layers) < 1: continue
 
     image = active_node.image
 #    image_name = image.name.split('.')[0] # Remove extension.
