@@ -3,7 +3,7 @@
 The program assumes the object has the following:
 - You need to be in *object mode*!
 - An *active* uv map.       // It will use the active/selected uv map.
-                            // Line 47; Personal use, it uses the first uv.
+                            // Line 44; Personal use, it uses the first uv.
 - An *active* image node.   // It will look in the active material.
 '''
 
@@ -17,9 +17,6 @@ for obj in context.selected_objects:
     if obj.type != 'MESH': continue
 
     mesh = obj.data
-
-    mat = obj.active_material
-    active_node = mat.node_tree.nodes.active # Both return None.
 
     if not (mat := obj.active_material) \
     or not (active_node := mat.node_tree.nodes.active) \
