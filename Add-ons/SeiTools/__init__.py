@@ -1,7 +1,7 @@
 import bpy
 
 from bpy.props import EnumProperty, PointerProperty
-from bpy.types import Operator, Panel, PropertyGroup
+from bpy.types import Operator, Header, Panel, PropertyGroup
 
 bl_info = {
     "name": "SeiTools",
@@ -451,6 +451,25 @@ class SEI_PT_modifier_profiling(Panel):
         row.label(text='TOTAL:')
         row.label(text=time_to_string(sum(times)))
 
+########################### Properties Header Mod
+
+# Restart blender after disabling the addon to restore the class.
+class PROPERTIES_HT_header(Header):
+    bl_space_type = 'PROPERTIES'
+
+    def draw(self, context):
+        layout = self.layout
+
+        layout.template_header()
+
+        layout.operator('wm.console_toggle', text='', icon='CONSOLE')
+        layout.operator('outliner.orphans_purge', text=' ', icon='TRASH') # Purge
+
+        layout.separator_spacer()
+
+        layout.prop(context.space_data, "search_filter", icon='VIEWZOOM', text="")
+        layout.popover(panel="PROPERTIES_PT_options", text="")
+
 #===========================
 
 classes = [
@@ -481,6 +500,9 @@ classes = [
 
     # Modifier Profiling (Simon Thommes)
     SEI_PT_modifier_profiling,
+
+    # Properties Header Mod
+    PROPERTIES_HT_header,
 ]
 
 def register():
