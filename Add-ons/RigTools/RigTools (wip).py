@@ -2322,7 +2322,7 @@ class SEI_RIG_OT_armature_metarig_add(SeiOperator, Operator):
 
         b = mesh.bones["thumb1_L"]
         b.sei_rig.rig_type = "finger"
-        b.sei_rig.rotation_axis = "x"
+        b.sei_rig.rotation_axis = "z"
 
         b = mesh.bones["thumb2_L"]
         b.sei_rig.use_connect = True
@@ -2332,7 +2332,7 @@ class SEI_RIG_OT_armature_metarig_add(SeiOperator, Operator):
 
         b = mesh.bones["index1_L"]
         b.sei_rig.rig_type = "finger"
-        b.sei_rig.rotation_axis = "x"
+        b.sei_rig.rotation_axis = "z"
 
         b = mesh.bones["index2_L"]
         b.sei_rig.use_connect = True
@@ -2342,7 +2342,7 @@ class SEI_RIG_OT_armature_metarig_add(SeiOperator, Operator):
 
         b = mesh.bones["middle1_L"]
         b.sei_rig.rig_type = "finger"
-        b.sei_rig.rotation_axis = "x"
+        b.sei_rig.rotation_axis = "z"
 
         b = mesh.bones["middle2_L"]
         b.sei_rig.use_connect = True
@@ -2352,7 +2352,7 @@ class SEI_RIG_OT_armature_metarig_add(SeiOperator, Operator):
 
         b = mesh.bones["ring1_L"]
         b.sei_rig.rig_type = "finger"
-        b.sei_rig.rotation_axis = "x"
+        b.sei_rig.rotation_axis = "z"
 
         b = mesh.bones["ring2_L"]
         b.sei_rig.use_connect = True
@@ -2362,7 +2362,7 @@ class SEI_RIG_OT_armature_metarig_add(SeiOperator, Operator):
 
         b = mesh.bones["pinky1_L"]
         b.sei_rig.rig_type = "finger"
-        b.sei_rig.rotation_axis = "x"
+        b.sei_rig.rotation_axis = "z"
 
         b = mesh.bones["pinky2_L"]
         b.sei_rig.use_connect = True
@@ -2405,7 +2405,7 @@ class SEI_RIG_OT_armature_metarig_add(SeiOperator, Operator):
 
         b = mesh.bones["middle1_R"]
         b.sei_rig.rig_type = "finger"
-        b.sei_rig.rotation_axis = "x"
+        b.sei_rig.rotation_axis = "z"
 
         b = mesh.bones["middle2_R"]
         b.sei_rig.use_connect = True
