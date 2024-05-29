@@ -132,7 +132,7 @@ def draw_callback_px(self, context):
     obj = context.active_object
     total_mat = context.space_data.region_3d.perspective_matrix @ obj.matrix_world
 
-    blf.size(0, 13)
+    blf.size(0, 10)
 
     def draw_index(r, g, b, index, center):
 
@@ -159,8 +159,11 @@ def draw_callback_px(self, context):
 
     for v in obj.data.vertices:
         try:
-            weight = vgroup.weight(v.index)
-            draw_index(1.0, 1.0, 1.0, weight, v.co.to_4d())
+            draw_index(
+                1.0, 1.0, 1.0,
+                vgroup.weight(v.index),
+                v.co.to_4d()
+            )
         except Exception as e:
             continue
 
@@ -398,7 +401,7 @@ class SEI_PT_tools(SeiPanel, Panel):
 
             # Scene Tools > Modifiers
             header, subpanel = panel.panel('SEI_PT_modifiers', default_closed=True)
-            header.label(text='Modifiers', icon='MODIFIER_DATA')
+            header.label(text='Modifiers', icon='MODIFIER')
 
             if subpanel:
                 all_modifiers = [(obj.name, mod) for obj in context.selected_objects if obj.type == 'MESH' for mod in obj.modifiers]
