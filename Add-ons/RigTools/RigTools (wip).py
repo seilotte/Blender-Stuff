@@ -88,24 +88,18 @@ class SEI_RIG_variables(PropertyGroup):
 
 def update_bone_colour(self, context):
     # SEI_RIG_PT_rig_tools assures: Bone exists, is PoseBone.
-    pbone = context.active_bone
+    for pbone in context.selected_pose_bones:
+        if context.active_object.data.bones[pbone.name].sei_rig.rig_type == 'none':
+            pbone.color.palette = 'DEFAULT'
+            pbone.color.custom.normal = \
+            pbone.color.custom.select = \
+            pbone.color.custom.active = (0.0, 0.0, 0.0)
 
-    if pbone is None:
-        return
-
-    if self.rig_type == 'none':
-        pbone.color.palette = 'DEFAULT'
-        pbone.color.custom.normal = \
-        pbone.color.custom.select = \
-        pbone.color.custom.active = (0.0, 0.0, 0.0)
-
-    else:
-        pbone.color.palette = 'CUSTOM'
-        pbone.color.custom.normal = (0.96, 0.26, 0.57) # pink
-        pbone.color.custom.select = (0.6, 0.9, 1.0)
-        pbone.color.custom.active = (0.7, 1.0, 1.0)
-
-        pbone.sei_rig.use_connect = False
+        else:
+            pbone.color.palette = 'CUSTOM'
+            pbone.color.custom.normal = (0.96, 0.26, 0.57) # pink
+            pbone.color.custom.select = (0.6, 0.9, 1.0)
+            pbone.color.custom.active = (0.7, 1.0, 1.0)
 
 class SEI_RIG_variables_bones(PropertyGroup):
     rig_type: EnumProperty(
