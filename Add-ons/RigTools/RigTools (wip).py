@@ -88,8 +88,14 @@ class SEI_RIG_variables(PropertyGroup):
 
 def update_bone_colour(self, context):
     # SEI_RIG_PT_rig_tools assures: Bone exists, is PoseBone.
-    for pbone in context.selected_pose_bones:
-        if context.active_object.data.bones[pbone.name].sei_rig.rig_type == 'none':
+    obj = context.active_object
+    pbones = context.selected_pose_bones
+
+    if obj is None or pbones is None:
+        return
+
+    for pbone in pbones:
+        if obj.data.bones[pbone.name].sei_rig.rig_type == 'none':
             pbone.color.palette = 'DEFAULT'
             pbone.color.custom.normal = \
             pbone.color.custom.select = \
