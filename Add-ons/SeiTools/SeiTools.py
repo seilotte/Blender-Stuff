@@ -99,9 +99,9 @@ class SEI_OT_armature_assign(SeiOperator, Operator):
             for vgroup in obj.vertex_groups:
                 if vgroup.name.startswith('DEF-'):
                     vgroup.name = vgroup.name[4:]
+                elif v.group.name == '---':
+                    break
                 else:
-                    if vgroup.name == '---': break
-
                     vgroup.name = f'DEF-{vgroup.name}'
 
         return{'FINISHED'}
@@ -118,7 +118,8 @@ def draw_callback_px(self, context):
     '''
     # polling
 #    if context.mode != 'EDIT_MESH' and context.mode != 'PAINT_WEIGHT':
-#        return
+    if context.mode != 'PAINT_WEIGHT':
+        return
 
     # Get screen information.
     region = context.region
@@ -238,16 +239,16 @@ def bone_parent_or_unparent(context, parent):
 
     return {'FINISHED'}
 
-class SEI_OT_bone_parent(SeiOperator, Operator):
-    bl_idname = 'sei.bone_parent'
+class SEI_RIG_OT_bone_parent(SeiOperator, Operator):
+    bl_idname = 'sei_rig.bone_parent'
     bl_label = 'Assign Parent'
     bl_description = 'Assign parent on the selected bones'
 
     def execute(self, context):
         return bone_parent_or_unparent(context, parent=True)
 
-class SEI_OT_bone_unparent(SeiOperator, Operator):
-    bl_idname = 'sei.bone_unparent'
+class SEI_RIG_OT_bone_unparent(SeiOperator, Operator):
+    bl_idname = 'sei_rig.bone_unparent'
     bl_label = 'Remove Parent'
     bl_description = 'Remove parent on the selected bones'
 
@@ -255,7 +256,7 @@ class SEI_OT_bone_unparent(SeiOperator, Operator):
         return bone_parent_or_unparent(context, parent=False)
 
 class SEI_RIG_OT_bone_select_children_recursive(SeiOperator, Operator):
-    bl_idname = 'sei.bone_select_children_recursive'
+    bl_idname = 'sei_rig.bone_select_children_recursive'
     bl_label = 'Select Children Recursive'
     bl_description = 'Select child bones recursively on the active bone'
 
@@ -270,7 +271,7 @@ class SEI_RIG_OT_bone_select_children_recursive(SeiOperator, Operator):
         return {'FINISHED'}
 
 class SEI_RIG_OT_bone_tail_to_head_parent(SeiOperator, Operator):
-    bl_idname = 'sei.bone_tail_to_head_parent'
+    bl_idname = 'sei_rig.bone_tail_to_head_parent'
     bl_label = 'Tail (Parent) to Head'
     bl_description = 'Move parent tail to child head on the selected bones'
 
@@ -352,17 +353,17 @@ class SEI_PT_tools(SeiPanel, Panel):
 
                 else:
                     subpanel.operator(
-                        'sei.bone_select_children_recursive',
+                        'sei_rig.bone_select_children_recursive',
                         text='Select Children [All]'
                     ) # GROUP_BONE
 
                     subpanel.separator()
 
                     row = subpanel.row(align=True)
-                    row.operator('sei.bone_parent', text='Parent')
-                    row.operator('sei.bone_unparent', text='Unparent')
+                    row.operator('sei_rig.bone_parent', text='Parent')
+                    row.operator('sei_rig.bone_unparent', text='Unparent')
 
-                    subpanel.operator('sei.bone_tail_to_head_parent') # BONE_DATA
+                    subpanel.operator('sei_rig.bone_tail_to_head_parent') # BONE_DATA
 
                     subpanel.separator()
 
@@ -593,8 +594,8 @@ classes = [
     SEI_OT_view3d_weight_visualizer,
 
     # Tools > Armature Tools > Bone Tools
-    SEI_OT_bone_parent,
-    SEI_OT_bone_unparent,
+    SEI_RIG_OT_bone_parent,
+    SEI_RIG_OT_bone_unparent,
     SEI_RIG_OT_bone_select_children_recursive,
     SEI_RIG_OT_bone_tail_to_head_parent,
 
