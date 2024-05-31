@@ -144,8 +144,14 @@ def draw_callback_px(self, context):
         x = int(mid_x + vec[0] * width / 2)
         y = int(mid_y + vec[1] * height / 2)
 
-        # bgl.glColorMask(1, 1, 1, 1)
         blf.position(0, x, y, 0)
+
+#        bgl.glColorMask(1, 1, 1, 1)
+#        blf.color(0, r, g, b, 1.0)
+
+        blf.enable(0, blf.SHADOW)
+        blf.shadow(0, 3, 0.0, 0.0, 0.0, 1.0)
+#        blf.shadow_offset(0, 1, -1)
 
         if isinstance(index, float):
             blf.draw(0, '{:.2f}'.format(index))
