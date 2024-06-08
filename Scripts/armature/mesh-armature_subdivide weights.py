@@ -104,6 +104,9 @@ class ARMATURE_OT_subdivide_weights(bpy.types.Operator):
             else:
                 return max( -(size * (x-offset)) * (size * (x-offset)) + 1.0 , 0.0)
 
+        def safe_divide(dividend=0.0, divisor=0.0):
+            return dividend / divisor if divisor > 0 else 0.0
+
         for bone in reversed(bones): # Order matters, end -> start.
             if context.mode == 'EDIT_ARMATURE':
                 org_bone = bones[0]
@@ -141,13 +144,13 @@ class ARMATURE_OT_subdivide_weights(bpy.types.Operator):
                     # Get bounds.
                     bound_left = half_power(
                         projection.length - (org_head - b_head).length, # fraction - head
-                        1.0 / (b.length * self.scale + self.overlap),
+                        safe_divide(1.0, b.length * self.scale + self.overlap),
                         self.overlap, # offset
                         'left'
                     )
                     bound_right = half_power(
                         projection.length - (org_head - b_tail).length, # fraction - tail
-                        1.0 / (b.length * self.scale + self.overlap),
+                        safe_divide(1.0, b.length * self.scale + self.overlap),
                         -self.overlap, # -offset
                         'right'
                     )
@@ -180,7 +183,7 @@ class ARMATURE_OT_subdivide_weights(bpy.types.Operator):
             layout.separator()
             layout.prop_search(self, 'target_object', bpy.data, 'objects')
 
-        if self.target_object:
+        if self.target_object or context.mode == 'PAINT_WEIGHT':
             col = layout.column(align=True)
             col.prop(self, 'scale')
             col.prop(self, 'overlap')
