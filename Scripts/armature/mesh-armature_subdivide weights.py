@@ -1,7 +1,6 @@
 import bpy
 from bpy.props import FloatProperty, IntProperty, StringProperty
 
-
 bl_info = {
     "name": "Subdivide Weights",
     "author": "Seilotte, Kyle",
@@ -9,7 +8,7 @@ bl_info = {
     "blender": (4, 1, 0),
     "location": "Weights > Subdivide Weights | Edit/Pose mode RMB > Subdivide Weights",
     "description": "Subdivide bone with its weight.",
-#    "tracker_url": "", 
+#    "tracker_url": "",
 #    "doc_url": "",
     "category": "Workflow",
     }
@@ -17,8 +16,7 @@ bl_info = {
 class ARMATURE_OT_subdivide_weights(bpy.types.Operator):
     bl_idname = 'armature.subdivide_weights'
     bl_label = 'Subdivide Weights'
-    bl_description = 'Subdivide the weights of the first selected pose bone or on the subdivided active bone'
-
+    bl_description = 'Subdivide the weights of the first selected bone'
 #    bl_region_type = 'UI'
     bl_options = {'REGISTER', 'UNDO'}
 
@@ -73,7 +71,7 @@ class ARMATURE_OT_subdivide_weights(bpy.types.Operator):
                 new_bone.select_head = \
                 new_bone.select_tail = True
 
-                new_bone.use_connect = bone.use_connect
+                new_bone.use_connect = True
                 new_bone.use_deform = bone.use_deform
 
                 new_bone.head = bone.head + (vec / self.number_cuts) * i
@@ -89,7 +87,7 @@ class ARMATURE_OT_subdivide_weights(bpy.types.Operator):
         # Subdivide weights.
         obj = bpy.data.objects.get(self.target_object) or context.object
         bones = context.selected_editable_bones if context.mode == 'EDIT_ARMATURE' else \
-        context.selected_pose_bones
+                context.selected_pose_bones
 
         if obj is None \
         or bones is None \
@@ -108,7 +106,6 @@ class ARMATURE_OT_subdivide_weights(bpy.types.Operator):
 
         for bone in reversed(bones): # Order matters, end -> start.
             if context.mode == 'EDIT_ARMATURE':
-                org_vgroup = obj.vertex_groups[bones[0].name]
                 org_bone = bones[0]
 
                 org_head = org_bone.head
@@ -120,7 +117,6 @@ class ARMATURE_OT_subdivide_weights(bpy.types.Operator):
                 b_tail = b.tail
 
             else: # PAINT_WEIGHT, POSE
-                org_vgroup = obj.vertex_groups[bones[0].name]
                 org_bone = bones[0].bone
 
                 org_head = org_bone.head_local
@@ -131,9 +127,9 @@ class ARMATURE_OT_subdivide_weights(bpy.types.Operator):
                 b_head = b.head_local
                 b_tail = b.tail_local
 
+            org_vgroup = obj.vertex_groups[bones[0].name]
             new_vgroup = obj.vertex_groups.get(bone.name) or obj.vertex_groups.new(name=bone.name)
 
-            # juice
             for v in obj.data.vertices:
                 for g in v.groups:
                     if g.group != org_vgroup.index:
@@ -209,7 +205,7 @@ def unregister():
 #    bpy.types.VIEW3D_MT_edit_armature.remove(ARMATURE_subdivide_weights_draw)
 #    bpy.types.VIEW3D_MT_pose.remove(ARMATURE_subdivide_weights_draw)
     bpy.types.VIEW3D_MT_armature_context_menu.remove(ARMATURE_subdivide_weights_draw)
-    bpy.types.VIEW3D_MT_pose_context_menu.remove(ARMATURE_subdivide_weights_draw) # Pose mode > Right click
+    bpy.types.VIEW3D_MT_pose_context_menu.remove(ARMATURE_subdivide_weights_draw)
     bpy.types.VIEW3D_MT_paint_weight.remove(ARMATURE_subdivide_weights_draw)
 
 if __name__ == "__main__": # debug; live edit
