@@ -1,13 +1,12 @@
 import bpy
 import blf
 
-from bpy.props import EnumProperty, PointerProperty, IntProperty
-from bpy.types import Operator, Header, Panel, PropertyGroup
+from bpy.types import Operator, Header, Panel, Menu, PropertyGroup
 
 bl_info = {
     "name": "SeiTools",
     "author": "Seilotte",
-    "version": (1, 3, 7),
+    "version": (1, 3, 8),
     "blender": (4, 1, 0),
     "location": "3D View > Properties > Sei",
     "description": "Random collection of tools for my personal use",
@@ -15,27 +14,6 @@ bl_info = {
     "tracker_url": "seilotte.github.io",
     "category": "Workflow", # 3D View
 }
-
-########################### Custom Variables
-
-# scene.sei_variables
-
-class SEI_variables(PropertyGroup):
-
-    # Rig Tools
-    armature: PointerProperty(name='Armature', type=bpy.types.Object)
-    is_running: IntProperty(name='Display Weight', default=0)
-
-    # Node Tools
-    color_space: EnumProperty(
-        name = 'Colour Space',
-        description = 'Image colour space to use on the node(s)',
-        items = [
-            # (identifier, name, description, icon, bumber)
-            ('sRGB', 'sRGB', ''),
-            ('Non-Color', 'Non-Color', '')
-        ]
-    )
 
 ########################### Global PT/OT Properties
 
@@ -45,7 +23,6 @@ class SeiPanel:
     bl_category = 'Sei'
 
 class SeiOperator:
-    bl_region_type = 'UI'
     bl_options = {'REGISTER', 'UNDO'}
 
 ################## OT Armature Tools
@@ -57,15 +34,13 @@ class SEI_OT_armature_infront_wire(SeiOperator, Operator):
 
     def execute(self, context):
 
-        vars = context.scene.sei_variables
-
         for obj in context.selected_objects:
             if obj.type != 'ARMATURE':
                 continue
 
-#            obj.data.display_type = 'OCTAHEDRAL'
             obj.show_in_front = True
             obj.display_type = 'WIRE'
+#            obj.data.display_type = 'OCTAHEDRAL'
 
         return {'FINISHED'}
 
@@ -74,12 +49,19 @@ class SEI_OT_armature_assign(SeiOperator, Operator):
     bl_label = 'Assign Armature'
     bl_description = 'Assign the indicated armature to the selected meshes'
 
+    @classmethod
+    def poll(cls, context):
+        return context.active_object and context.active_object.type == 'ARMATURE'
+
     def execute(self, context):
 
-        vars = context.scene.sei_variables
+        armature = context.active_object
 
         for obj in context.selected_objects:
-            if obj.type != 'MESH': continue
+            if obj == armature:
+                continue
+            elif obj.type != 'MESH':
+                continue
 
             armature_modifier = None
 
@@ -91,10 +73,11 @@ class SEI_OT_armature_assign(SeiOperator, Operator):
             if not armature_modifier:
                 armature_modifier = obj.modifiers.new('Armature', 'ARMATURE')
 
-            armature_modifier.object = vars.armature
+            armature_modifier.object = armature
 
-            # Rename vertex groups (rigify).
-            if not vars.armature.data.get('rig_id'): continue
+            # Rigify; Rename vertex groups.
+            if not armature.data.get('rig_id'):
+                continue
 
             for vgroup in obj.vertex_groups:
                 if vgroup.name.startswith('DEF-'):
@@ -116,11 +99,6 @@ def draw_callback_px(self, context):
     '''
     Calculate locations and store them as ID property in the mesh.
     '''
-    # polling
-#    if context.mode != 'EDIT_MESH' and context.mode != 'PAINT_WEIGHT':
-    if context.mode != 'PAINT_WEIGHT':
-        return
-
     # Get screen information.
     region = context.region
     mid_x = region.width / 2
@@ -133,7 +111,7 @@ def draw_callback_px(self, context):
     obj = context.active_object
     total_mat = context.space_data.region_3d.perspective_matrix @ obj.matrix_world
 
-    blf.size(0, 10)
+    blf.size(0, context.preferences.ui_styles[0].widget_label.points)
 
     def draw_index(r, g, b, index, center):
 
@@ -154,14 +132,10 @@ def draw_callback_px(self, context):
 #        blf.shadow_offset(0, 1, -1)
 
         if isinstance(index, float):
-            blf.draw(0, '{:.2f}'.format(index))
+            blf.draw(0, '{:.3f}'.format(index))
         else:
             blf.draw(0, str(index))
 
-#    if vars.live_mode:
-#        obj.data.update()
-
-#    if vars.display_weight:
     vgroup = obj.vertex_groups.active
 
     for v in obj.data.vertices:
@@ -186,30 +160,25 @@ class SEI_OT_view3d_weight_visualizer(SeiOperator, Operator):
         return context.mode == 'PAINT_WEIGHT'
 
     def modal(self, context, event):
-        vars = context.scene.sei_variables
-
         if context.area:
             context.area.tag_redraw()
 
-        # Removal of callbacks when the operator is called again.
-        if vars.is_running == -1:
+        if context.scene['sei_tmp_weights'] is True or context.mode != 'PAINT_WEIGHT':
+            # Removal of callbacks when the operator is called again.
             bpy.types.SpaceView3D.draw_handler_remove(self._handle, 'WINDOW')
-            vars.is_running = 0
+            del context.scene['sei_tmp_weights']
+
             return {'CANCELLED'}
 
         return {'PASS_THROUGH'}
 
     def invoke(self, context, event):
-        vars = context.scene.sei_variables
-
         if context.area.type != "VIEW_3D":
             self.report({'WARNING'}, 'View3D not found, cannot run operator')
             return {'CANCELLED'}
 
-        elif vars.is_running != 1:
+        elif context.scene.get('sei_tmp_weights') is None:
             # Operator is called for the first time, start everything.
-            vars.is_running = 1
-
             self._handle = bpy.types.SpaceView3D.draw_handler_add(
                 draw_callback_px,
                 (self, context),
@@ -217,13 +186,13 @@ class SEI_OT_view3d_weight_visualizer(SeiOperator, Operator):
                 'POST_PIXEL'
             )
             context.window_manager.modal_handler_add(self)
-
-            return {'RUNNING_MODAL'}
+            context.scene['sei_tmp_weights'] = False
 
         else:
             # Operator is called again, stop displaying.
-            vars.is_running = -1
-            return {'RUNNING_MODAL'}
+            context.scene['sei_tmp_weights'] = True
+
+        return {'RUNNING_MODAL'}
 
 ######### OT Bone Tools
 
@@ -298,15 +267,29 @@ class SEI_RIG_OT_bone_tail_to_head_parent(SeiOperator, Operator):
 
 ################## OT Scene Tools
 
-class SEI_OT_scene_assign_view_layer_name(SeiOperator, Operator):
-    bl_idname = 'sei.scene_assign_view_layer_name'
+class SEI_OT_clean_blend(SeiOperator, Operator):
+    bl_idname = 'sei.clean_blend'
+    bl_label = 'Clean Blend'
+    bl_description = 'Clean the blend file with blender operators'
+
+    def execute(self, context):
+
+        bpy.ops.screen.spacedata_cleanup()
+        bpy.ops.wm.operator_presets_cleanup()
+        bpy.ops.wm.clear_recent_files()
+        bpy.ops.wm.previews_clear()
+
+        return {'FINISHED'}
+
+class SEI_OT_scene_assign_object_name(SeiOperator, Operator):
+    bl_idname = 'sei.scene_assign_object_name'
     bl_label = 'Rename'
-    bl_description = 'Assign the mesh data name to the selected objects'
+    bl_description = 'Assign the object name to the data of the selected objects'
 
     def execute(self, context):
 
         for obj in context.scene.objects:
-            if obj.type in ['MESH', 'ARMATURE', 'LIGHT', 'CAMERA']:
+            if hasattr(obj, 'data') and hasattr(obj.data, 'name'):
                 obj.data.name = obj.name
 
         return {'FINISHED'}
@@ -320,7 +303,6 @@ class SEI_PT_tools(SeiPanel, Panel):
     def draw(self, context):
         layout = self.layout
 
-        vars = context.scene.sei_variables 
         obj = context.active_object
 
         # Armature Tools
@@ -329,10 +311,7 @@ class SEI_PT_tools(SeiPanel, Panel):
 
         if panel:
             panel.operator('sei.armature_infront_wire')
-
-            row = panel.row(align=True)
-            row.prop(vars, 'armature', text='', icon='MOD_ARMATURE')
-            row.operator('sei.armature_assign', text='Assign')
+            panel.operator('sei.armature_assign')
 
             if obj and obj.type == 'ARMATURE':
                 panel.prop(obj.data, 'display_type')
@@ -341,7 +320,7 @@ class SEI_PT_tools(SeiPanel, Panel):
 
             panel.operator(
                 'sei.view3d_weight_visualizer',
-                icon='PAUSE' if vars.is_running == 1 else 'WPAINT_HLT'
+                icon='PAUSE' if context.scene.get('sei_tmp_weights') is False else 'WPAINT_HLT'
             )
 
             # Armature Tools > Bone Tools
@@ -384,7 +363,8 @@ class SEI_PT_tools(SeiPanel, Panel):
         header.label(text='Scene Tools', icon='SCENE_DATA')
 
         if panel:
-            panel.operator('sei.scene_assign_view_layer_name', icon='FILE_TEXT')
+            panel.operator('sei.clean_blend', icon='FILE_BLEND')
+            panel.operator('sei.scene_assign_object_name', icon='FILE_TEXT')
 
             if obj and obj.type == 'MESH':
                 panel.prop(obj, 'show_wire', text='Wireframe', icon='MOD_WIREFRAME')
@@ -411,9 +391,13 @@ class SEI_PT_tools(SeiPanel, Panel):
             header.label(text='Modifiers', icon='MODIFIER')
 
             if subpanel:
-                all_modifiers = [(obj.name, mod) for obj in context.selected_objects if obj.type == 'MESH' for mod in obj.modifiers]
-                sort_modifiers = sorted(all_modifiers, key=lambda x: (x[1].type, x[1].name)) # x[1] = mod
-                del all_modifiers
+                sort_modifiers = [
+                    (obj.name, mod)
+                    for obj in context.selected_objects
+                    if obj.type in ['MESH', 'GPENCIL']
+                    for mod in list(obj.modifiers) + list(obj.grease_pencil_modifiers)
+                ]
+                sort_modifiers = sorted(sort_modifiers, key=lambda x: (x[1].type, x[1].name)) # x[1] = mod
 
                 col = subpanel.column()
 
@@ -459,45 +443,16 @@ class SEI_OT_nodes_hide_sockets_from_group_inputs(SeiOperator, Operator):
 
         return {'FINISHED'}
 
-class SEI_OT_nodes_assign_image_space(SeiOperator, Operator):
-    bl_idname = 'sei.nodes_assign_image_space'
-    bl_label = 'Assign Image Space'
-    bl_description = 'Assign the desired image space to the selected image nodes'
+# Restart blender after disabling the addon to restore the class.
+# I prefer this rather than ...append().
+class NODE_MT_node_tree_interface_context_menu(Menu):
+    bl_label = "Node Tree Interface Specials"
 
-    def execute(self, context):
-
-        vars = context.scene.sei_variables
-
-        for node in context.selected_nodes:
-            if node.type != 'TEX_IMAGE' or not node.image: continue
-
-            node.image.colorspace_settings.name = vars.color_space
-            node.image.alpha_mode = 'CHANNEL_PACKED'
-
-        return {'FINISHED'}
-
-
-class SEI_PT_node_tools(Panel):
-    bl_idname = 'SEI_PT_node_tools'
-    bl_label = 'Node Tools'
-
-    bl_space_type = 'NODE_EDITOR'
-    bl_region_type = 'UI'
-    bl_category = 'Group'
-
-    @classmethod
-    def poll(cls, context):
-        return context.space_data.edit_tree
-
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
-        vars = context.scene.sei_variables
 
+        layout.operator('node.interface_item_duplicate', icon='DUPLICATE')
         layout.operator('sei.nodes_hide_sockets_group_inputs', icon='NODE')
-
-        row = layout.row(align=True)
-        row.prop(vars, 'color_space', text='', icon='IMAGE_RGB')
-        row.operator('sei.nodes_assign_image_space', text='Assign')
 
 ########################### Modifier Profiling
 
@@ -527,8 +482,8 @@ class SEI_PT_modifier_profiling(Panel):
     bl_region_type = 'WINDOW'
     bl_context = 'modifier'
 
-    def draw_header(self, context):
-        self.layout.label(icon='MODIFIER')
+#    def draw_header(self, context):
+#        self.layout.label(icon='MODIFIER')
 
     def draw(self, context):
 
@@ -580,7 +535,7 @@ class PROPERTIES_HT_header(Header):
 
         layout.template_header()
 
-        layout.operator('wm.console_toggle', text='', icon='CONSOLE')
+#        layout.operator('wm.console_toggle', text='', icon='CONSOLE') # Windows.
         layout.operator('outliner.orphans_purge', text=' ', icon='TRASH') # Purge
 
         layout.separator_spacer()
@@ -591,8 +546,6 @@ class PROPERTIES_HT_header(Header):
 #===========================
 
 classes = [
-    SEI_variables,
-
     # Tools > Armature Tools
     SEI_OT_armature_infront_wire,
     SEI_OT_armature_assign,
@@ -606,14 +559,14 @@ classes = [
     SEI_RIG_OT_bone_tail_to_head_parent,
 
     # Tools > Scene Tools > Simplify > Modifiers
-    SEI_OT_scene_assign_view_layer_name,
+    SEI_OT_clean_blend,
+    SEI_OT_scene_assign_object_name,
 
     SEI_PT_tools,
 
     # Node Tools
     SEI_OT_nodes_hide_sockets_from_group_inputs,
-    SEI_OT_nodes_assign_image_space,
-    SEI_PT_node_tools,
+    NODE_MT_node_tree_interface_context_menu,
 
     # Modifier Profiling (Simon Thommes)
     SEI_PT_modifier_profiling,
@@ -626,13 +579,9 @@ def register():
     for cls in classes:
         bpy.utils.register_class(cls)
 
-    bpy.types.Scene.sei_variables = PointerProperty(type=SEI_variables)
-
 def unregister():
     for cls in classes:
         bpy.utils.unregister_class(cls)
-
-    del bpy.types.Scene.sei_variables
 
 if __name__ == "__main__": # debug; live edit
     register()
