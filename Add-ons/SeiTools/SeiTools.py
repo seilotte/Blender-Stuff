@@ -94,11 +94,14 @@ class SEI_OT_armature_assign(SeiOperator, Operator):
 # Bartius Crouch, CoDEmanX, hikariztw
 # https://github.com/theoldben/NumericalVertexWeightVisualizer
 #
-# Slightly modified.
+# Modified.
 def draw_callback_px(self, context):
     '''
     Calculate locations and store them as ID property in the mesh.
     '''
+    if context.mode != 'PAINT_WEIGHT':
+        return
+
     # Get screen information.
     region = context.region
     mid_x = region.width / 2
@@ -107,29 +110,24 @@ def draw_callback_px(self, context):
     height = region.height
 
     # Get matrices.
-    # total_mattrix = view_mattrix @ obj_matrix
-    obj = context.active_object
+    # total_matrix = view_matrix @ obj_matrix
+    obj = context.active_object.evaluated_get(context.view_layer.depsgraph)
     total_mat = context.space_data.region_3d.perspective_matrix @ obj.matrix_world
 
     blf.size(0, context.preferences.ui_styles[0].widget_label.points)
+    blf.enable(0, blf.SHADOW)
+    blf.shadow(0, 3, 0.0, 0.0, 0.0, 1.0)
 
-    def draw_index(r, g, b, index, center):
+    def draw_index(index, center):
 
         vec = total_mat @ center # order is important
 
         # dehomogenise
-        vec = (vec[0] / vec[3], vec[1] / vec[3], vec[2] / vec[3])
+        vec = (vec[0] / vec[3], vec[1] / vec[3])
         x = int(mid_x + vec[0] * width / 2)
         y = int(mid_y + vec[1] * height / 2)
 
         blf.position(0, x, y, 0)
-
-#        bgl.glColorMask(1, 1, 1, 1)
-#        blf.color(0, r, g, b, 1.0)
-
-        blf.enable(0, blf.SHADOW)
-        blf.shadow(0, 3, 0.0, 0.0, 0.0, 1.0)
-#        blf.shadow_offset(0, 1, -1)
 
         if isinstance(index, float):
             blf.draw(0, '{:.3f}'.format(index))
@@ -141,7 +139,6 @@ def draw_callback_px(self, context):
     for v in obj.data.vertices:
         try:
             draw_index(
-                1.0, 1.0, 1.0,
                 vgroup.weight(v.index),
                 v.co.to_4d()
             )
@@ -153,46 +150,35 @@ class SEI_OT_view3d_weight_visualizer(SeiOperator, Operator):
     bl_label = 'Visualize Weights'
     bl_description = 'Toggle the visualization of numerical weights'
 
-    _handle = None
-
     @classmethod
     def poll(cls, context):
         return context.mode == 'PAINT_WEIGHT'
 
-    def modal(self, context, event):
-        if context.area:
-            context.area.tag_redraw()
+    def execute(self, context):
+        cls = self.__class__
 
-        if context.scene['sei_tmp_weights'] is True or context.mode != 'PAINT_WEIGHT':
-            # Removal of callbacks when the operator is called again.
-            bpy.types.SpaceView3D.draw_handler_remove(self._handle, 'WINDOW')
-            del context.scene['sei_tmp_weights']
-
-            return {'CANCELLED'}
-
-        return {'PASS_THROUGH'}
-
-    def invoke(self, context, event):
-        if context.area.type != "VIEW_3D":
+        if context.area and context.area.type != "VIEW_3D":
             self.report({'WARNING'}, 'View3D not found, cannot run operator')
             return {'CANCELLED'}
 
-        elif context.scene.get('sei_tmp_weights') is None:
+        elif context.scene.get('sei_is_running') is None:
             # Operator is called for the first time, start everything.
-            self._handle = bpy.types.SpaceView3D.draw_handler_add(
+            cls._handle = bpy.types.SpaceView3D.draw_handler_add(
                 draw_callback_px,
                 (self, context),
                 'WINDOW',
                 'POST_PIXEL'
             )
-            context.window_manager.modal_handler_add(self)
-            context.scene['sei_tmp_weights'] = False
+            context.scene['sei_is_running'] = True # For icon.
 
         else:
             # Operator is called again, stop displaying.
-            context.scene['sei_tmp_weights'] = True
+            bpy.types.SpaceView3D.draw_handler_remove(cls._handle, 'WINDOW')
+            del context.scene['sei_is_running']
 
-        return {'RUNNING_MODAL'}
+        context.area.tag_redraw()
+
+        return {'FINISHED'}
 
 ######### OT Bone Tools
 
@@ -313,14 +299,12 @@ class SEI_PT_tools(SeiPanel, Panel):
             panel.operator('sei.armature_infront_wire')
             panel.operator('sei.armature_assign')
 
-            if obj and obj.type == 'ARMATURE':
-                panel.prop(obj.data, 'display_type')
-            else:
-                panel.label()
+            panel.prop(obj.data, 'display_type') \
+            if obj and obj.type == 'ARMATURE' else panel.label()
 
             panel.operator(
                 'sei.view3d_weight_visualizer',
-                icon='PAUSE' if context.scene.get('sei_tmp_weights') is False else 'WPAINT_HLT'
+                icon='PAUSE' if context.scene.get('sei_is_running') else 'WPAINT_HLT'
             )
 
             # Armature Tools > Bone Tools
@@ -366,10 +350,8 @@ class SEI_PT_tools(SeiPanel, Panel):
             panel.operator('sei.clean_blend', icon='FILE_BLEND')
             panel.operator('sei.scene_assign_object_name', icon='FILE_TEXT')
 
-            if obj and obj.type == 'MESH':
-                panel.prop(obj, 'show_wire', text='Wireframe', icon='MOD_WIREFRAME')
-            else:
-                panel.label()
+            panel.prop(obj, 'show_wire', text='Wireframe', icon='MOD_WIREFRAME') \
+            if obj and obj.type == 'MESH' else panel.label()
 
             # Scene Tools > Simplify
             header, subpanel = panel.panel('SEI_PT_simplify')
