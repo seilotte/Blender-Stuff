@@ -3,18 +3,19 @@ import bpy
 obj = bpy.context.active_object
 
 ''' Removes vertex groups with cero weights. Note that it does not take into
-consideration locked groups, groups used by modifiers, etcetera. '''
+consideration groups used by modifiers, etcetera. '''
+
+safe_vgroups = {
+    obj.vertex_groups[g.group]
+    for vertex in obj.data.vertices
+    for g in vertex.groups
+    if g.weight > 0.0
+}
 
 for vgroup in obj.vertex_groups:
-    has_weight = False # Resets every iteration.
+    if vgroup in safe_vgroups:
+        continue
+    elif vgroup.lock_weight:
+        continue
 
-    for vertex in obj.data.vertices:
-        if has_weight: break
-
-        for g in vertex.groups: # It can be assigned to multiple vertex groups.
-            if g.group == vgroup.index and g.weight > 0.0:
-                has_weight = True
-                break
-
-    if not has_weight: # Is false.
-        obj.vertex_groups.remove(vgroup)
+    obj.vertex_groups.remove(vgroup)

@@ -2761,7 +2761,10 @@ def register():
     bpy.types.Armature.sei_rig = PointerProperty(type=SEI_RIG_variables)
     bpy.types.Bone.sei_rig = PointerProperty(type=SEI_RIG_variables_bones)
 
-    bpy.types.VIEW3D_MT_armature_add.append(SEI_RIG_armature_add_menu_draw)
+    cls = bpy.types.VIEW3D_MT_armature_add
+    if not hasattr(cls.draw, '_draw_funcs') \
+    or not any(f.__name__ == 'SEI_RIG_armature_add_menu_draw' for f in cls.draw._draw_funcs):
+        cls.append(SEI_RIG_armature_add_menu_draw)
 
 def unregister():
     for cls in classes:
