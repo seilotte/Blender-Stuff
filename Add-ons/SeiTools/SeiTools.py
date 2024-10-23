@@ -253,10 +253,46 @@ class SEI_RIG_OT_bone_tail_to_head_parent(SeiOperator, Operator):
 
 ################## OT Scene Tools
 
+def id_properties_clear_recursive(data, *, max_depth: int):
+    stack = [(data, 0)]
+
+    while stack:
+        current_data, current_depth = stack.pop()
+
+        if current_depth > max_depth:
+            continue
+
+        # TODO: Properly handle the error, do not delete everything (list?),
+        # temporary solution.
+        try:
+            if hasattr(current_data, 'id_properties_clear'):
+                current_data.id_properties_clear()
+        except TypeError as e:
+            if "doesn't support IDProperties" in str(e):
+                print(f"Skipping {current_data}, error: {e}")
+            else:
+                raise
+
+        for attr_name in dir(current_data):
+            attr = getattr(current_data, attr_name, None)
+
+            if isinstance(attr, bpy.types.bpy_prop_collection):
+                for obj in attr:
+                    stack.append((obj, current_depth + 1))
+
+    return
+
 class SEI_OT_clean_blend(SeiOperator, Operator):
     bl_idname = 'sei.clean_blend'
     bl_label = 'Clean Blend'
     bl_description = 'Clean the blend file with blender operators'
+
+    clear_props_depth: bpy.props.IntProperty(
+        name = 'Properties Max Depth',
+        default = 0,
+        soft_min = 0, # hard_min not working
+        soft_max = 1
+    )
 
     def execute(self, context):
 
@@ -264,6 +300,9 @@ class SEI_OT_clean_blend(SeiOperator, Operator):
         bpy.ops.wm.operator_presets_cleanup()
         bpy.ops.wm.clear_recent_files()
         bpy.ops.wm.previews_clear()
+
+        if clear_props_depth > 0: # not necessary
+            id_properties_clear_recursive(bpy.data, max_depth=self.clear_props_depth)
 
         return {'FINISHED'}
 
