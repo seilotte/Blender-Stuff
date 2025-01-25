@@ -567,8 +567,8 @@ class SEI_PT_tools(SeiPanel, Panel):
                 sort_modifiers = [
                     (obj.name, mod)
                     for obj in context.selected_objects
-                    if obj.type in ['MESH', 'GPENCIL']
-                    for mod in list(obj.modifiers) + list(obj.grease_pencil_modifiers)
+                    if obj.type in ['MESH', 'GREASEPENCIL']
+                    for mod in list(obj.modifiers)
                 ]
                 sort_modifiers = sorted(sort_modifiers, key=lambda x: (x[1].type, x[1].name)) # x[1] = mod
 
