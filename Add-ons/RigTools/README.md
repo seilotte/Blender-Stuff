@@ -1,4 +1,4 @@
-# Sei tools
+# Rig tools
 A collection of scripts made into an UI to facilitate my blender workflow.
 
 ## Installation

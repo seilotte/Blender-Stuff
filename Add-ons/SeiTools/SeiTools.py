@@ -1,13 +1,16 @@
 import bpy
 import blf
+import gpu
 
+from mathutils import Matrix
+from gpu_extras.batch import batch_for_shader
 from bpy.types import Operator, Header, Panel, Menu, PropertyGroup
 
 bl_info = {
     "name": "SeiTools",
     "author": "Seilotte",
-    "version": (1, 3, 8),
-    "blender": (4, 1, 0),
+    "version": (1, 3, 9),
+    "blender": (4, 3, 2),
     "location": "3D View > Properties > Sei",
     "description": "Random collection of tools for my personal use",
     "doc_url": "seilotte.github.io",
@@ -95,7 +98,7 @@ class SEI_OT_armature_assign(SeiOperator, Operator):
 # https://github.com/theoldben/NumericalVertexWeightVisualizer
 #
 # Modified.
-def draw_callback_px(self, context):
+def draw_weights(self, context):
     '''
     Calculate locations and store them as ID property in the mesh.
     '''
@@ -114,7 +117,8 @@ def draw_callback_px(self, context):
     obj = context.active_object.evaluated_get(context.view_layer.depsgraph)
     total_mat = context.space_data.region_3d.perspective_matrix @ obj.matrix_world
 
-    blf.size(0, context.preferences.ui_styles[0].widget_label.points)
+    # blf.size(0, context.preferences.ui_styles[0].widget_label.points)
+    blf.size(0, 12.0)
     blf.enable(0, blf.SHADOW)
     blf.shadow(0, 3, 0.0, 0.0, 0.0, 1.0)
 
@@ -145,36 +149,38 @@ def draw_callback_px(self, context):
         except Exception as e:
             continue
 
-class SEI_OT_view3d_weight_visualizer(SeiOperator, Operator):
-    bl_idname = 'sei.view3d_weight_visualizer'
+class SEI_OT_view3d_weights_visualizer(SeiOperator, Operator):
+    bl_idname = 'sei.view3d_weights_visualizer'
     bl_label = 'Visualize Weights'
-    bl_description = 'Toggle the visualization of numerical weights'
+    bl_description = 'Toggle the visibility of numerical weights'
+
+    _handle = None
 
     @classmethod
     def poll(cls, context):
-        return context.mode == 'PAINT_WEIGHT'
+        return \
+        context.area \
+        and context.area.type == 'VIEW_3D' \
+        and context.mode == 'PAINT_WEIGHT'
 
     def execute(self, context):
-        cls = self.__class__
-
-        if context.area and context.area.type != "VIEW_3D":
-            self.report({'WARNING'}, 'View3D not found, cannot run operator')
-            return {'CANCELLED'}
-
-        elif context.scene.get('sei_is_running') is None:
+        if SEI_OT_view3d_weights_visualizer._handle is None:
             # Operator is called for the first time, start everything.
-            cls._handle = bpy.types.SpaceView3D.draw_handler_add(
-                draw_callback_px,
+            SEI_OT_view3d_weights_visualizer._handle = \
+            bpy.types.SpaceView3D.draw_handler_add(
+                draw_weights,
                 (self, context),
                 'WINDOW',
                 'POST_PIXEL'
             )
-            context.scene['sei_is_running'] = True # For icon.
 
         else:
             # Operator is called again, stop displaying.
-            bpy.types.SpaceView3D.draw_handler_remove(cls._handle, 'WINDOW')
-            del context.scene['sei_is_running']
+            bpy.types.SpaceView3D.draw_handler_remove(
+                SEI_OT_view3d_weights_visualizer._handle,
+                'WINDOW'
+            )
+            SEI_OT_view3d_weights_visualizer._handle = None
 
         context.area.tag_redraw()
 
@@ -312,6 +318,154 @@ class SEI_OT_scene_assign_object_name(SeiOperator, Operator):
 
         return {'FINISHED'}
 
+# Pixels Visualizer
+shader_info = gpu.types.GPUShaderCreateInfo()
+
+shader_info.push_constant('MAT4', 'matrix_custom')
+shader_info.push_constant('VEC2', 'image_resolution')
+shader_info.sampler(0, 'FLOAT_2D', 'image0')
+
+shader_info.vertex_in(0, 'VEC2', 'position')
+shader_info.vertex_in(1, 'VEC2', 'coord')
+
+vert_out = gpu.types.GPUStageInterfaceInfo('cam_pixels')
+vert_out.smooth('VEC2', 'uv')
+shader_info.vertex_out(vert_out)
+
+shader_info.fragment_out(0, 'VEC4', 'FragColour')
+
+
+shader_info.vertex_source(
+    '''
+    void main()
+    {
+        gl_Position = matrix_custom * vec4(position, 0.0, 1.0);
+        uv = coord;
+    }
+    '''
+)
+
+shader_info.fragment_source(
+    '''
+    void main()
+    {
+        float aspect_ratio = image_resolution.x / image_resolution.y;
+        vec2 uv = uv;
+
+        uv = uv * 2.0 - 1.0;
+        uv *= aspect_ratio > 1. ? vec2(1., aspect_ratio) : vec2(1./aspect_ratio, 1.);
+        uv = uv * 0.5 + 0.5;
+
+        FragColour = texelFetch(image0, ivec2(uv * image_resolution), 0);
+        // FragColour.a = 1.0;
+    }
+    '''
+)
+
+shader = gpu.shader.create_from_info(shader_info)
+del vert_out
+del shader_info
+
+batch = batch_for_shader(
+    shader,
+    'TRI_FAN',
+    {
+        'position': ((-1, -1), (1, -1), (1, 1), (-1, 1)),
+        'coord': ((0, 0), (1, 0), (1, 1), (0, 1)),
+    },
+)
+
+def draw_pixels(self, context, buffer):
+    scene = context.scene
+    camera = scene.camera
+
+    if scene.camera is None:
+        return
+
+    width = scene.render.resolution_x
+    height = scene.render.resolution_y
+
+    buffer.draw_view3d(
+        scene,
+        context.view_layer,
+        context.space_data,
+        context.region,
+        camera.matrix_world.inverted(), # view_matrix
+        camera.calc_matrix_camera( # projection_matrix
+            context.evaluated_depsgraph_get(),
+            x = width,
+            y = height
+        ),
+        do_color_management = False
+    )
+
+    gpu.state.depth_mask_set(False)
+    gpu.state.blend_set('NONE')
+
+
+    matrix = camera.matrix_world.copy()
+
+    camera = camera.data
+    offset = camera.ortho_scale if camera.type == 'ORTHO' else camera.lens / camera.sensor_width
+
+    # viewprojection_matrix * camera_matrix * custom_matrix
+    matrix = \
+    context.region_data.perspective_matrix @ \
+    matrix @ \
+    Matrix([
+        [0.5, 0.0, 0.0, 0.0],
+        [0.0, 0.5, 0.0, 0.0],
+        [0.0, 0.0, 0.5, -offset],
+        [0.0, 0.0, 0.0, 1.0]
+    ])
+
+
+    shader.uniform_float('matrix_custom', matrix)
+    shader.uniform_float('image_resolution', (width, height))
+    shader.uniform_sampler('image0', buffer.texture_color)
+    batch.draw(shader)
+
+class SEI_OT_view3d_pixels_visualizer(SeiOperator, Operator):
+    bl_idname = 'sei.view3d_pixels_visualizer'
+    bl_label = 'Visualize Pixels'
+    bl_description = 'Toggle the visibility of pixels for the active camera in the 3D viewport'
+
+    _handle = None
+
+    @classmethod
+    def poll(cls, context):
+        return \
+        context.area \
+        and context.area.type == 'VIEW_3D' \
+        and not(context.scene.camera is None)
+
+    def execute(self, context):
+        if SEI_OT_view3d_pixels_visualizer._handle is None:
+            buffer = gpu.types.GPUOffScreen(
+                context.scene.render.resolution_x,
+                context.scene.render.resolution_y,
+                format='RGBA8'
+            )
+
+            SEI_OT_view3d_pixels_visualizer._handle = \
+            bpy.types.SpaceView3D.draw_handler_add(
+                draw_pixels,
+                (self, context, buffer),
+                'WINDOW',
+                'POST_PIXEL'
+            )
+
+        else:
+            bpy.types.SpaceView3D.draw_handler_remove(
+                SEI_OT_view3d_pixels_visualizer._handle,
+                'WINDOW'
+            )
+            SEI_OT_view3d_pixels_visualizer._handle = None
+
+        context.area.tag_redraw()
+
+        return {'FINISHED'}
+
 ########################### PT Tools
 
 class SEI_PT_tools(SeiPanel, Panel):
@@ -335,8 +489,8 @@ class SEI_PT_tools(SeiPanel, Panel):
             if obj and obj.type == 'ARMATURE' else panel.label()
 
             panel.operator(
-                'sei.view3d_weight_visualizer',
-                icon='PAUSE' if context.scene.get('sei_is_running') else 'WPAINT_HLT'
+                'sei.view3d_weights_visualizer',
+                icon='WPAINT_HLT' if SEI_OT_view3d_weights_visualizer._handle is None else 'QUIT'
             )
 
             # Armature Tools > Bone Tools
@@ -384,6 +538,11 @@ class SEI_PT_tools(SeiPanel, Panel):
 
             panel.prop(obj, 'show_wire', text='Wireframe', icon='MOD_WIREFRAME') \
             if obj and obj.type == 'MESH' else panel.label()
+
+            panel.operator(
+                'sei.view3d_pixels_visualizer',
+                icon='TEXTURE_DATA' if SEI_OT_view3d_pixels_visualizer._handle is None else 'QUIT'
+            )
 
             # Scene Tools > Simplify
             header, subpanel = panel.panel('SEI_PT_simplify')
@@ -564,7 +723,7 @@ classes = [
     SEI_OT_armature_infront_wire,
     SEI_OT_armature_assign,
     # Numerical Vertex Weight Visualizer (Bartius Crouch, CoDEmanX, hikariztw)
-    SEI_OT_view3d_weight_visualizer,
+    SEI_OT_view3d_weights_visualizer,
 
     # Tools > Armature Tools > Bone Tools
     SEI_RIG_OT_bone_parent,
@@ -575,6 +734,7 @@ classes = [
     # Tools > Scene Tools > Simplify > Modifiers
     SEI_OT_clean_blend,
     SEI_OT_scene_assign_object_name,
+    SEI_OT_view3d_pixels_visualizer,
 
     SEI_PT_tools,
 
