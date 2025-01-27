@@ -406,16 +406,22 @@ def draw_pixels(self, context, buffer):
     matrix = camera.matrix_world.copy()
 
     camera = camera.data
-    offset = camera.ortho_scale if camera.type == 'ORTHO' else camera.lens / camera.sensor_width
+
+    if camera.type == 'ORTHO':
+        offset = 1.0
+        scale = 0.5 * camera.ortho_scale
+    else:
+        offset = camera.lens / camera.sensor_width
+        scale = 0.5
 
     # viewprojection_matrix * camera_matrix * custom_matrix
     matrix = \
-    context.region_data.perspective_matrix @ \
-    matrix @ \
-    Matrix([
-        [0.5, 0.0, 0.0, 0.0],
-        [0.0, 0.5, 0.0, 0.0],
-        [0.0, 0.0, 0.5, -offset],
+    context.region_data.perspective_matrix \
+    @ matrix \
+    @ Matrix([
+        [scale, 0.0, 0.0, 0.0],
+        [0.0, scale, 0.0, 0.0],
+        [0.0, 0.0, scale, -offset],
         [0.0, 0.0, 0.0, 1.0]
     ])
 
@@ -655,8 +661,8 @@ class SEI_PT_modifier_profiling(Panel):
     bl_region_type = 'WINDOW'
     bl_context = 'modifier'
 
-#    def draw_header(self, context):
-#        self.layout.label(icon='MODIFIER')
+    def draw_header(self, context):
+        self.layout.label(icon='MODIFIER')
 
     def draw(self, context):
 
