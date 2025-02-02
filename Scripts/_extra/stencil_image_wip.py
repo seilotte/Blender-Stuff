@@ -60,9 +60,11 @@ def draw_stencil(self, context, image):
 
     for coll in [coll] + coll.children_recursive:
         for obj in coll.objects:
-            if obj.type not in ['MESH', 'GREASEPENCIL']:
+            if obj.type != 'MESH' \
+            or obj.visible_get() is False:
                 continue
 
+            # TODO: Use CBlenderMalt for better performance?
             mesh = obj.evaluated_get(depsgraph).data
             mesh.calc_loop_triangles()
 
@@ -85,6 +87,8 @@ def draw_stencil(self, context, image):
     if not vertices or not indices:
         return
 
+    del counter, offset
+
     vertices = np.concatenate(vertices, axis=0)
     indices = np.concatenate(indices, axis=0)
     indices_obj = np.concatenate(indices_obj, axis=0)
@@ -101,33 +105,43 @@ def draw_stencil(self, context, image):
         indices = indices,
     )
 
-    v = gpu.state.viewport_get()
+    del vertices, indices, indices_obj
 
-    width = round((scene.render.resolution_percentage / 100) * v[2])
-    height = round((scene.render.resolution_percentage / 100) * v[3])
-    del v, depsgraph
+    if context and context.region_data.view_perspective != 'CAMERA':
+        _, _, width, height = gpu.state.viewport_get()
+
+        matrix = context.region_data.perspective_matrix
+
+    else:
+        width = scene.render.resolution_x
+        height = scene.render.resolution_y
+
+        matrix = \
+        scene.camera.calc_matrix_camera(depsgraph, x=width, y=height) \
+        @ scene.camera.matrix_world.inverted()
+
+    width  = round((scene.render.resolution_percentage / 100) * width)
+    height = round((scene.render.resolution_percentage / 100) * height)
 
     offscreen = gpu.types.GPUOffScreen(width, height, format = 'RGBA8')
     with offscreen.bind():
-#        gpu.state.depth_mask_set(False)
-#        gpu.state.blend_set('NONE')
-        gpu.state.depth_mask_set(True)
-        gpu.state.depth_test_set('LESS')
-
         framebuffer = gpu.state.active_framebuffer_get()
         framebuffer.clear(depth = 1.0)
 
-        shader.uniform_float('viewproj_matrix', context.region_data.perspective_matrix)
+        gpu.state.depth_mask_set(True)
+        gpu.state.depth_test_set('LESS')
+        gpu.state.blend_set('NONE')
+
+        shader.uniform_float('viewproj_matrix', matrix)
         batch.draw(shader)
 
-        buffer = framebuffer.read_color(0, 0, width, height, 4, 0, 'UBYTE')
+        buffer = framebuffer.read_color(0, 0, width, height, 4, 0, 'FLOAT')
+        buffer.dimensions = width * height * 4
 
     offscreen.free()
 
-    buffer.dimensions = width * height * 4
-
     image.scale(width, height)
-    image.pixels = [v / 255 for v in buffer]
+    image.pixels.foreach_set(buffer)
 
 class SEI_OT_stencil(bpy.types.Operator):
     bl_region_type = 'UI'
@@ -211,6 +225,11 @@ def register():
         name = 'Collection',
         description = 'Collection to retrieve objects'
     )
+
+    # temporay; does not work
+    # TODO: Render an image sequence?
+#    bpy.app.handlers.render_pre[:] = [i for i in bpy.app.handlers.render_pre if i.__name__ != 'draw_stencil']
+#    bpy.app.handlers.render_pre.append(draw_stencil)
 
 def unregister():
     for cls in classes:
