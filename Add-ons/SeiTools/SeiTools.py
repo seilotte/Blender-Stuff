@@ -2,9 +2,8 @@ import bpy
 import blf
 import gpu
 
-from mathutils import Matrix
 from gpu_extras.batch import batch_for_shader
-from bpy.types import Operator, Header, Panel, Menu, PropertyGroup
+from bpy.types import Operator, Panel, PropertyGroup
 
 bl_info = {
     "name": "SeiTools",
@@ -98,63 +97,50 @@ class SEI_OT_armature_assign(SeiOperator, Operator):
 # https://github.com/theoldben/NumericalVertexWeightVisualizer
 #
 # Modified.
-def draw_weights(self, context):
-    '''
-    Calculate locations and store them as ID property in the mesh.
-    '''
-    if context.mode != 'PAINT_WEIGHT':
-        return
-
-    # Get screen information.
-    region = context.region
-    mid_x = region.width / 2
-    mid_y = region.height / 2
-    width = region.width
-    height = region.height
-
-    # Get matrices.
-    # total_matrix = view_matrix @ obj_matrix
-    obj = context.active_object.evaluated_get(context.view_layer.depsgraph)
-    total_mat = context.space_data.region_3d.perspective_matrix @ obj.matrix_world
-
-    # blf.size(0, context.preferences.ui_styles[0].widget_label.points)
-    blf.size(0, 12.0)
-    blf.enable(0, blf.SHADOW)
-    blf.shadow(0, 3, 0.0, 0.0, 0.0, 1.0)
-
-    def draw_index(index, center):
-
-        vec = total_mat @ center # order is important
-
-        # dehomogenise
-        vec = (vec[0] / vec[3], vec[1] / vec[3])
-        x = int(mid_x + vec[0] * width / 2)
-        y = int(mid_y + vec[1] * height / 2)
-
-        blf.position(0, x, y, 0)
-
-        if isinstance(index, float):
-            blf.draw(0, '{:.3f}'.format(index))
-        else:
-            blf.draw(0, str(index))
-
-    vgroup = obj.vertex_groups.active
-
-    for v in obj.data.vertices:
-        try:
-            draw_index(
-                vgroup.weight(v.index),
-                v.co.to_4d()
-            )
-        except Exception as e:
-            continue
-
 class SEI_OT_view3d_weights_visualizer(SeiOperator, Operator):
     bl_idname = 'sei.view3d_weights_visualizer'
     bl_label = 'Visualize Weights'
     bl_description = 'Toggle the visibility of numerical weights'
 
+    bl_options = {'REGISTER', 'UNDO'}
+
     _handle = None
+
+    def draw_weights(self, context):
+        if context.mode != 'PAINT_WEIGHT':
+            return
+
+        obj = context.active_object.evaluated_get(context.evaluated_depsgraph_get())
+        vgroup = obj.vertex_groups.active
+        matrix_total = context.region_data.perspective_matrix @ obj.matrix_world
+
+        _, _, mid_x, mid_y = gpu.state.viewport_get()
+        mid_x /= 2
+        mid_y /= 2
+
+        blf.size(0, 12.0)
+        blf.enable(0, blf.SHADOW)
+        blf.shadow(0, 6, 0.0, 0.0, 0.0, 1.0)
+
+        for v in obj.data.vertices:
+            try:
+                weight = vgroup.weight(v.index)
+
+                vec = matrix_total @ v.co.to_4d()
+                vec = (vec[0] / vec[3], vec[1] / vec[3]) # dehomogenize
+
+                x = int(mid_x + vec[0] * mid_x)
+                y = int(mid_y + vec[1] * mid_y)
+
+                blf.position(0, x, y, 0)
+
+                if isinstance(weight, float):
+                    blf.draw(0, '{:.3f}'.format(weight))
+                else:
+                    blf.draw(0, str(weight))
+
+            except Exception as e:
+                continue
 
     @classmethod
     def poll(cls, context):
@@ -164,23 +150,21 @@ class SEI_OT_view3d_weights_visualizer(SeiOperator, Operator):
         and context.mode == 'PAINT_WEIGHT'
 
     def execute(self, context):
-        if SEI_OT_view3d_weights_visualizer._handle is None:
-            # Operator is called for the first time, start everything.
-            SEI_OT_view3d_weights_visualizer._handle = \
-            bpy.types.SpaceView3D.draw_handler_add(
-                draw_weights,
-                (self, context),
-                'WINDOW',
-                'POST_PIXEL'
-            )
-
-        else:
-            # Operator is called again, stop displaying.
+        if SEI_OT_view3d_weights_visualizer._handle:
             bpy.types.SpaceView3D.draw_handler_remove(
                 SEI_OT_view3d_weights_visualizer._handle,
                 'WINDOW'
             )
             SEI_OT_view3d_weights_visualizer._handle = None
+
+        else:
+            SEI_OT_view3d_weights_visualizer._handle = \
+            bpy.types.SpaceView3D.draw_handler_add(
+                self.draw_weights,
+                (context,),
+                'WINDOW',
+                'POST_PIXEL'
+            )
 
         context.area.tag_redraw()
 
@@ -318,125 +302,122 @@ class SEI_OT_scene_assign_object_name(SeiOperator, Operator):
 
         return {'FINISHED'}
 
-# Pixels Visualizer
-shader_info = gpu.types.GPUShaderCreateInfo()
-
-shader_info.push_constant('MAT4', 'matrix_custom')
-shader_info.push_constant('VEC2', 'image_resolution')
-shader_info.sampler(0, 'FLOAT_2D', 'image0')
-
-shader_info.vertex_in(0, 'VEC2', 'position')
-shader_info.vertex_in(1, 'VEC2', 'coord')
-
-vert_out = gpu.types.GPUStageInterfaceInfo('cam_pixels')
-vert_out.smooth('VEC2', 'uv')
-shader_info.vertex_out(vert_out)
-
-shader_info.fragment_out(0, 'VEC4', 'FragColour')
-
-
-shader_info.vertex_source(
-    '''
-    void main()
-    {
-        gl_Position = matrix_custom * vec4(position, 0.0, 1.0);
-        uv = coord;
-    }
-    '''
-)
-
-shader_info.fragment_source(
-    '''
-    void main()
-    {
-        float aspect_ratio = image_resolution.x / image_resolution.y;
-        vec2 uv = uv;
-
-        uv = uv * 2.0 - 1.0;
-        uv *= aspect_ratio > 1. ? vec2(1., aspect_ratio) : vec2(1./aspect_ratio, 1.);
-        uv = uv * 0.5 + 0.5;
-
-        FragColour = texelFetch(image0, ivec2(uv * image_resolution), 0);
-        // FragColour.a = 1.0;
-    }
-    '''
-)
-
-shader = gpu.shader.create_from_info(shader_info)
-del vert_out
-del shader_info
-
-batch = batch_for_shader(
-    shader,
-    'TRI_FAN',
-    {
-        'position': ((-1, -1), (1, -1), (1, 1), (-1, 1)),
-        'coord': ((0, 0), (1, 0), (1, 1), (0, 1)),
-    },
-)
-
-def draw_pixels(self, context, buffer):
-    scene = context.scene
-    camera = scene.camera
-
-    if scene.camera is None:
-        return
-
-    width = scene.render.resolution_x
-    height = scene.render.resolution_y
-
-    buffer.draw_view3d(
-        scene,
-        context.view_layer,
-        context.space_data,
-        context.region,
-        camera.matrix_world.inverted(), # view_matrix
-        camera.calc_matrix_camera( # projection_matrix
-            context.evaluated_depsgraph_get(),
-            x = width,
-            y = height
-        ),
-        do_color_management = False
-    )
-
-    gpu.state.depth_mask_set(False)
-    gpu.state.blend_set('NONE')
-
-
-    matrix = camera.matrix_world.copy()
-
-    camera = camera.data
-
-    if camera.type == 'ORTHO':
-        offset = 1.0
-        scale = 0.5 * camera.ortho_scale
-    else:
-        offset = camera.lens / camera.sensor_width
-        scale = 0.5
-
-    # viewprojection_matrix * camera_matrix * custom_matrix
-    matrix = \
-    context.region_data.perspective_matrix \
-    @ matrix \
-    @ Matrix([
-        [scale, 0.0, 0.0, 0.0],
-        [0.0, scale, 0.0, 0.0],
-        [0.0, 0.0, scale, -offset],
-        [0.0, 0.0, 0.0, 1.0]
-    ])
-
-
-    shader.uniform_float('matrix_custom', matrix)
-    shader.uniform_float('image_resolution', (width, height))
-    shader.uniform_sampler('image0', buffer.texture_color)
-    batch.draw(shader)
-
 class SEI_OT_view3d_pixels_visualizer(SeiOperator, Operator):
     bl_idname = 'sei.view3d_pixels_visualizer'
     bl_label = 'Visualize Pixels'
-    bl_description = 'Toggle the visibility of pixels for the active camera in the 3D viewport'
+    bl_description = 'Toggle the visibility of pixels for the active camera'
+
+    bl_options = {'REGISTER', 'UNDO'}
 
     _handle = None
+
+    def __init__(self):
+        self.offscreen = None
+        self.shader = None
+        self.batch = None
+
+    def _setup_shader(self):
+        vsh = \
+        '''
+        in vec4 position; // zeros
+        in vec2 coord;
+
+        out vec2 uv;
+
+        uniform mat4 offsets; // vertex_positions
+        uniform mat4 matrix_custom;
+
+        void main()
+        {
+            gl_Position = matrix_custom * (position + offsets[gl_VertexID]);
+            uv = coord;
+        }
+        '''
+        
+        fsh = \
+        '''
+        in vec2 uv;
+
+        out vec4 col0;
+
+        uniform sampler2D image0;
+
+        void main()
+        {
+            col0 = texelFetch(image0, ivec2(uv * textureSize(image0, 0).xy), 0);
+            // col0 = vec4(uv, 0.0, 1.0);
+        }
+        '''
+
+        self.shader = gpu.types.GPUShader(vertexcode = vsh, fragcode = fsh)
+
+    def _setup_batch(self):
+        self.batch = batch_for_shader(
+            self.shader,
+            'TRI_FAN',
+            {
+                'position': (0, 0, 0, 0),
+                'coord': ((0, 0), (1, 0), (1, 1), (0, 1))
+            }
+        )
+
+    def _setup_offscreen(self, context):
+        render = context.scene.render
+        scale = render.resolution_percentage / 100
+
+        self.offscreen = gpu.types.GPUOffScreen(
+            round(render.resolution_x * scale),
+            round(render.resolution_y * scale),
+            format = 'RGBA8'
+        )
+
+    def draw_pixels(self, context):
+        try:
+            scene = context.scene
+            camera = scene.camera
+
+            if camera is None:
+                return
+
+            self.offscreen.draw_view3d(
+                scene,
+                context.view_layer,
+                context.space_data,
+                context.region,
+                camera.matrix_world.inverted(), # view_matrix
+                camera.calc_matrix_camera( # projection_matrix
+                    context.evaluated_depsgraph_get(),
+                    x = self.offscreen.width,
+                    y = self.offscreen.height
+                ),
+                do_color_management = False
+            )
+
+            gpu.state.depth_mask_set(False)
+            gpu.state.blend_set('NONE')
+
+            frame = camera.data.view_frame(scene = scene)
+            frame = (
+                frame[2].x, frame[2].y, frame[2].z, 0.0,
+                frame[1].x, frame[1].y, frame[1].z, 0.0,
+                frame[0].x, frame[0].y, frame[0].z, 0.0,
+                frame[3].x, frame[3].y, frame[3].z, 0.0
+            )
+
+            self.shader.uniform_float('offsets', frame) # mat4
+            self.shader.uniform_float('matrix_custom', context.region_data.perspective_matrix @ camera.matrix_world)
+            self.shader.uniform_sampler('image0', self.offscreen.texture_color)
+
+            self.batch.draw(self.shader)
+
+        except ReferenceError as e:
+            bpy.types.SpaceView3D.draw_handler_remove(SEI_OT_view3d_pixels_visualizer._handle, 'WINDOW')
+            SEI_OT_view3d_pixels_visualizer._handle = None
+
+            context.area.tag_redraw()
+
+#            print(f'Handler removed due to the following error:\n{e}')
+#            raise # debug
 
     @classmethod
     def poll(cls, context):
@@ -446,27 +427,26 @@ class SEI_OT_view3d_pixels_visualizer(SeiOperator, Operator):
         and not(context.scene.camera is None)
 
     def execute(self, context):
-        if SEI_OT_view3d_pixels_visualizer._handle is None:
-            buffer = gpu.types.GPUOffScreen(
-                context.scene.render.resolution_x,
-                context.scene.render.resolution_y,
-                format='RGBA8'
-            )
 
-            SEI_OT_view3d_pixels_visualizer._handle = \
-            bpy.types.SpaceView3D.draw_handler_add(
-                draw_pixels,
-                (self, context, buffer),
-                'WINDOW',
-                'POST_PIXEL'
-            )
-
-        else:
+        if SEI_OT_view3d_pixels_visualizer._handle:
             bpy.types.SpaceView3D.draw_handler_remove(
                 SEI_OT_view3d_pixels_visualizer._handle,
                 'WINDOW'
             )
             SEI_OT_view3d_pixels_visualizer._handle = None
+
+        else:
+            self._setup_offscreen(context)
+            self._setup_shader()
+            self._setup_batch()
+
+            SEI_OT_view3d_pixels_visualizer._handle = \
+            bpy.types.SpaceView3D.draw_handler_add(
+                self.draw_pixels,
+                (context,),
+                'WINDOW',
+                'POST_PIXEL'
+            )
 
         context.area.tag_redraw()
 
@@ -496,7 +476,7 @@ class SEI_PT_tools(SeiPanel, Panel):
 
             panel.operator(
                 'sei.view3d_weights_visualizer',
-                icon='WPAINT_HLT' if SEI_OT_view3d_weights_visualizer._handle is None else 'QUIT'
+                icon = 'PAUSE' if SEI_OT_view3d_weights_visualizer._handle else 'WPAINT_HLT'
             )
 
             # Armature Tools > Bone Tools
@@ -547,7 +527,7 @@ class SEI_PT_tools(SeiPanel, Panel):
 
             panel.operator(
                 'sei.view3d_pixels_visualizer',
-                icon='TEXTURE_DATA' if SEI_OT_view3d_pixels_visualizer._handle is None else 'QUIT'
+                icon = 'PAUSE' if SEI_OT_view3d_pixels_visualizer._handle else 'TEXTURE_DATA'
             )
 
             # Scene Tools > Simplify
@@ -622,17 +602,6 @@ class SEI_OT_nodes_hide_sockets_from_group_inputs(SeiOperator, Operator):
 
         return {'FINISHED'}
 
-# Restart blender after disabling the addon to restore the class.
-# I prefer this rather than ...append().
-class NODE_MT_node_tree_interface_context_menu(Menu):
-    bl_label = "Node Tree Interface Specials"
-
-    def draw(self, _context):
-        layout = self.layout
-
-        layout.operator('node.interface_item_duplicate', icon='DUPLICATE')
-        layout.operator('sei.nodes_hide_sockets_group_inputs', icon='NODE')
-
 ########################### Modifier Profiling
 
 # Simon Thommes
@@ -703,24 +672,31 @@ class SEI_PT_modifier_profiling(Panel):
         row.label(text='TOTAL:')
         row.label(text=time_to_string(sum(times)))
 
-########################### Properties Header Mod
+########################### UI Mods
 
 # Restart blender after disabling the addon to restore the class.
-class PROPERTIES_HT_header(Header):
-    bl_space_type = 'PROPERTIES'
+def SEI_PROPERTIES_HT_header(self, context):
+    layout = self.layout
 
-    def draw(self, context):
-        layout = self.layout
+    layout.template_header()
 
-        layout.template_header()
+#    layout.operator('wm.console_toggle', text='', icon='CONSOLE') # Windows.
+    layout.operator('outliner.orphans_purge', text=' ', icon='TRASH') # Purge
 
-#        layout.operator('wm.console_toggle', text='', icon='CONSOLE') # Windows.
-        layout.operator('outliner.orphans_purge', text=' ', icon='TRASH') # Purge
+    layout.separator_spacer()
 
-        layout.separator_spacer()
+    layout.prop(context.space_data, "search_filter", icon='VIEWZOOM', text="")
+    layout.popover(panel="PROPERTIES_PT_options", text="")
 
-        layout.prop(context.space_data, "search_filter", icon='VIEWZOOM', text="")
-        layout.popover(panel="PROPERTIES_PT_options", text="")
+def SEI_VIEW3D_HT_header(self, context):
+    self.layout.operator(
+        'sei.view3d_pixels_visualizer',
+        text = ' ',
+        icon = 'PAUSE' if SEI_OT_view3d_pixels_visualizer._handle else 'TEXTURE_DATA'
+    )
+
+def SEI_NODE_MT_node_tree_interface_context_menu(self, context):
+    self.layout.operator('sei.nodes_hide_sockets_group_inputs', icon='NODE')
 
 #===========================
 
@@ -746,22 +722,25 @@ classes = [
 
     # Node Tools
     SEI_OT_nodes_hide_sockets_from_group_inputs,
-    NODE_MT_node_tree_interface_context_menu,
 
     # Modifier Profiling (Simon Thommes)
     SEI_PT_modifier_profiling,
-
-    # Properties Header Mod
-    PROPERTIES_HT_header,
 ]
 
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
 
+    bpy.types.PROPERTIES_HT_header.draw = SEI_PROPERTIES_HT_header # Restart blender after disabling the addon to restore the class.
+    bpy.types.VIEW3D_HT_header.append(SEI_VIEW3D_HT_header)
+    bpy.types.NODE_MT_node_tree_interface_context_menu.append(SEI_NODE_MT_node_tree_interface_context_menu)
+
 def unregister():
     for cls in classes:
         bpy.utils.unregister_class(cls)
+
+    bpy.types.VIEW3D_HT_header.remove(SEI_VIEW3D_HT_header)
+    bpy.types.NODE_MT_node_tree_interface_context_menu.remove(SEI_NODE_MT_node_tree_interface_context_menu)
 
 if __name__ == "__main__": # debug; live edit
     register()
