@@ -311,11 +311,6 @@ class SEI_OT_view3d_pixels_visualizer(SeiOperator, Operator):
 
     _handle = None
 
-    def __init__(self):
-        self.offscreen = None
-        self.shader = None
-        self.batch = None
-
     def _setup_shader(self):
         vsh = \
         '''
@@ -349,11 +344,11 @@ class SEI_OT_view3d_pixels_visualizer(SeiOperator, Operator):
         }
         '''
 
-        self.shader = gpu.types.GPUShader(vertexcode = vsh, fragcode = fsh)
+        return gpu.types.GPUShader(vertexcode = vsh, fragcode = fsh)
 
-    def _setup_batch(self):
-        self.batch = batch_for_shader(
-            self.shader,
+    def _setup_batch(self, shader):
+        return batch_for_shader(
+            shader,
             'TRI_FAN',
             {
                 'position': (0, 0, 0, 0),
@@ -365,59 +360,49 @@ class SEI_OT_view3d_pixels_visualizer(SeiOperator, Operator):
         render = context.scene.render
         scale = render.resolution_percentage / 100
 
-        self.offscreen = gpu.types.GPUOffScreen(
+        return gpu.types.GPUOffScreen(
             round(render.resolution_x * scale),
             round(render.resolution_y * scale),
             format = 'RGBA8'
         )
 
-    def draw_pixels(self, context):
-        try:
-            scene = context.scene
-            camera = scene.camera
+    def draw_pixels(self, context, offscreen, shader, batch):
+        scene = context.scene
+        camera = scene.camera
 
-            if camera is None:
-                return
+        if camera is None:
+            return
 
-            self.offscreen.draw_view3d(
-                scene,
-                context.view_layer,
-                context.space_data,
-                context.region,
-                camera.matrix_world.inverted(), # view_matrix
-                camera.calc_matrix_camera( # projection_matrix
-                    context.evaluated_depsgraph_get(),
-                    x = self.offscreen.width,
-                    y = self.offscreen.height
-                ),
-                do_color_management = False
-            )
+        offscreen.draw_view3d(
+            scene,
+            context.view_layer,
+            context.space_data,
+            context.region,
+            camera.matrix_world.inverted(), # view_matrix
+            camera.calc_matrix_camera( # projection_matrix
+                context.evaluated_depsgraph_get(),
+                x = offscreen.width,
+                y = offscreen.height
+            ),
+            do_color_management = False
+        )
 
-            gpu.state.depth_mask_set(False)
-            gpu.state.blend_set('NONE')
+        gpu.state.depth_mask_set(False)
+        gpu.state.blend_set('NONE')
 
-            frame = camera.data.view_frame(scene = scene)
-            frame = (
-                frame[2].x, frame[2].y, frame[2].z, 0.0,
-                frame[1].x, frame[1].y, frame[1].z, 0.0,
-                frame[0].x, frame[0].y, frame[0].z, 0.0,
-                frame[3].x, frame[3].y, frame[3].z, 0.0
-            )
+        frame = camera.data.view_frame(scene = scene)
+        frame = (
+            frame[2].x, frame[2].y, frame[2].z, 0.0,
+            frame[1].x, frame[1].y, frame[1].z, 0.0,
+            frame[0].x, frame[0].y, frame[0].z, 0.0,
+            frame[3].x, frame[3].y, frame[3].z, 0.0
+        )
 
-            self.shader.uniform_float('offsets', frame) # mat4
-            self.shader.uniform_float('matrix_custom', context.region_data.perspective_matrix @ camera.matrix_world)
-            self.shader.uniform_sampler('image0', self.offscreen.texture_color)
+        shader.uniform_float('offsets', frame) # mat4
+        shader.uniform_float('matrix_custom', context.region_data.perspective_matrix @ camera.matrix_world)
+        shader.uniform_sampler('image0', offscreen.texture_color)
 
-            self.batch.draw(self.shader)
-
-        except ReferenceError as e:
-            bpy.types.SpaceView3D.draw_handler_remove(SEI_OT_view3d_pixels_visualizer._handle, 'WINDOW')
-            SEI_OT_view3d_pixels_visualizer._handle = None
-
-            context.area.tag_redraw()
-
-#            print(f'Handler removed due to the following error:\n{e}')
-#            raise # debug
+        batch.draw(shader)
 
     @classmethod
     def poll(cls, context):
@@ -427,7 +412,6 @@ class SEI_OT_view3d_pixels_visualizer(SeiOperator, Operator):
         and not(context.scene.camera is None)
 
     def execute(self, context):
-
         if SEI_OT_view3d_pixels_visualizer._handle:
             bpy.types.SpaceView3D.draw_handler_remove(
                 SEI_OT_view3d_pixels_visualizer._handle,
@@ -436,14 +420,14 @@ class SEI_OT_view3d_pixels_visualizer(SeiOperator, Operator):
             SEI_OT_view3d_pixels_visualizer._handle = None
 
         else:
-            self._setup_offscreen(context)
-            self._setup_shader()
-            self._setup_batch()
+            offscreen = self._setup_offscreen(context)
+            shader = self._setup_shader()
+            batch = self._setup_batch(shader)
 
             SEI_OT_view3d_pixels_visualizer._handle = \
             bpy.types.SpaceView3D.draw_handler_add(
                 self.draw_pixels,
-                (context,),
+                (context, offscreen, shader, batch),
                 'WINDOW',
                 'POST_PIXEL'
             )
