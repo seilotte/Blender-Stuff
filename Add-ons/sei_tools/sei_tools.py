@@ -6,10 +6,10 @@ from gpu_extras.batch import batch_for_shader
 from bpy.types import Operator, Panel, PropertyGroup
 
 bl_info = {
-    "name": "SeiTools",
+    "name": "Sei Tools",
     "author": "Seilotte",
-    "version": (1, 3, 9),
-    "blender": (4, 3, 2),
+    "version": (1, 4, 0),
+    "blender": (4, 4, 0),
     "location": "3D View > Properties > Sei",
     "description": "Random collection of tools for my personal use",
     "doc_url": "seilotte.github.io",
