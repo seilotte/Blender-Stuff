@@ -1,4 +1,4 @@
-<h1 align = "center">SeiStencil</h1>
+<h1 align = "center">Sei Stencil</h1>
 
 <p align = "center">This add-on creates a stencil pass as a Blender image.</p>
 
@@ -8,7 +8,7 @@
 
 ## Installation
 
-1. Download [SeiStencil.py](https://github.com/seilotte/Blender-Stuff/blob/main/Add-ons/SeiStencil/SeiStencil.py).
+1. Download [sei_stencil.py](./sei_stencil.py).
 1. In Blender, go to `Edit -> Preferences -> Add-ons -> Add-ons Settings -> Install from Disk`.
 1. Locate and select the downloaded file.
 1. Upon successful installation, the "Sei" category will appear in the 3D View sidebar (shortcut: **N**).
