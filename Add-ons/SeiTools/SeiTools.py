@@ -102,8 +102,6 @@ class SEI_OT_view3d_weights_visualizer(SeiOperator, Operator):
     bl_label = 'Visualize Weights'
     bl_description = 'Toggle the visibility of numerical weights'
 
-    bl_options = {'REGISTER', 'UNDO'}
-
     _handle = None
 
     def draw_weights(self, context):
@@ -307,8 +305,6 @@ class SEI_OT_view3d_pixels_visualizer(SeiOperator, Operator):
     bl_label = 'Visualize Pixels'
     bl_description = 'Toggle the visibility of pixels for the active camera'
 
-    bl_options = {'REGISTER', 'UNDO'}
-
     _handle = None
 
     def _setup_shader(self):
@@ -358,11 +354,10 @@ class SEI_OT_view3d_pixels_visualizer(SeiOperator, Operator):
 
     def _setup_offscreen(self, context):
         render = context.scene.render
-        scale = render.resolution_percentage / 100
 
         return gpu.types.GPUOffScreen(
-            round(render.resolution_x * scale),
-            round(render.resolution_y * scale),
+            render.resolution_x * render.resolution_percentage // 100,
+            render.resolution_y * render.resolution_percentage // 100,
             format = 'RGBA8'
         )
 
