@@ -10,8 +10,8 @@ bl_info = {
     "blender": (4, 4, 0),
     "location": "3D View > Properties > Sei",
     "description": "Creates a stencil pass for the viewport and final render.",
-    "tracker_url": "seilotte.github.io",
-    "doc_url": "seilotte.github.io",
+    "tracker_url": "https://github.com/seilotte/Blender-Stuff/tree/main/Add-ons/sei_stencil",
+    "doc_url": "https://github.com/seilotte/Blender-Stuff/issues",
     "category": "Workflow",
 }
 

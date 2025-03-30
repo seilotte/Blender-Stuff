@@ -43,8 +43,8 @@ bl_info = {
     "blender": (4, 1, 0),
     "location": "3D View > Properties > Sei",
     "description": "",
-    "tracker_url": "seilotte.github.io",    
-    "doc_url": "seilotte.github.io",
+    "tracker_url": "https://github.com/seilotte/Blender-Stuff/tree/main/Add-ons/rig_tools",    
+    "doc_url": "https://github.com/seilotte/Blender-Stuff/issues",
     "category": "Rigging", # Animation
     }
 

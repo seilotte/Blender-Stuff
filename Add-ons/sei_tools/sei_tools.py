@@ -12,8 +12,8 @@ bl_info = {
     "blender": (4, 4, 0),
     "location": "3D View > Properties > Sei",
     "description": "Random collection of tools for my personal use",
-    "doc_url": "seilotte.github.io",
-    "tracker_url": "seilotte.github.io",
+    "doc_url": "https://github.com/seilotte/Blender-Stuff/tree/main/Add-ons/sei_tools",
+    "tracker_url": "https://github.com/seilotte/Blender-Stuff/issues",
     "category": "Workflow", # 3D View
 }
 
