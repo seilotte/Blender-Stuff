@@ -8,7 +8,7 @@ from bpy.types import Operator, Panel, PropertyGroup
 bl_info = {
     "name": "Sei Tools",
     "author": "Seilotte",
-    "version": (1, 4, 0),
+    "version": (1, 4, 1),
     "blender": (4, 4, 0),
     "location": "3D View > Properties > Sei",
     "description": "Random collection of tools for my personal use",
@@ -116,6 +116,7 @@ class SEI_OT_view3d_weights_visualizer(SeiOperator, Operator):
         mid_x /= 2
         mid_y /= 2
 
+        blf.color(0, 1.0, 1.0, 1.0, 1.0)
         blf.size(0, 12.0)
         blf.enable(0, blf.SHADOW)
         blf.shadow(0, 6, 0.0, 0.0, 0.0, 1.0)
@@ -567,6 +568,10 @@ class SEI_OT_nodes_hide_sockets_from_group_inputs(SeiOperator, Operator):
     bl_label = 'Fix Group Inputs'
     bl_description = 'Toggle unused node sockets from group input nodes'
 
+    @classmethod
+    def poll(cls, context):
+        return context.area.type == 'NODE_EDITOR'
+
     def execute(self, context):
 
         tree = find_active_node_tree(context)
@@ -578,6 +583,23 @@ class SEI_OT_nodes_hide_sockets_from_group_inputs(SeiOperator, Operator):
                 socket.hide = True
 
 #        self.report({'INFO'}, "Fixed group inputs.")
+
+        return {'FINISHED'}
+
+class SEI_OT_nodes_selected_to_origin(SeiOperator, Operator):
+    bl_idname = 'sei.nodes_selected_to_origin'
+    bl_label = 'Selection to Origin'
+    bl_description = 'Move selected node(s) to the origin'
+
+    @classmethod
+    def poll(cls, context):
+        return context.area.type == 'NODE_EDITOR'
+
+    def execute(self, context):
+
+        for node in context.selected_nodes:
+            node.location[0] = 0
+            node.location[1] = 0
 
         return {'FINISHED'}
 
@@ -676,6 +698,7 @@ def SEI_VIEW3D_HT_header(self, context):
 
 def SEI_NODE_MT_node_tree_interface_context_menu(self, context):
     self.layout.operator('sei.nodes_hide_sockets_group_inputs', icon='NODE')
+    self.layout.operator('sei.nodes_selected_to_origin', icon='RESTRICT_SELECT_OFF')
 
 #===========================
 
@@ -701,6 +724,7 @@ classes = [
 
     # Node Tools
     SEI_OT_nodes_hide_sockets_from_group_inputs,
+    SEI_OT_nodes_selected_to_origin,
 
     # Modifier Profiling (Simon Thommes)
     SEI_PT_modifier_profiling,
