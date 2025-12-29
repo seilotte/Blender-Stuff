@@ -8,8 +8,8 @@ from bpy.types import Operator, Panel, PropertyGroup
 bl_info = {
     "name": "Sei Tools",
     "author": "Seilotte",
-    "version": (1, 4, 1),
-    "blender": (4, 4, 0),
+    "version": (1, 5, 0),
+    "blender": (5, 0, 0),
     "location": "3D View > Properties > Sei",
     "description": "Random collection of tools for my personal use",
     "doc_url": "https://github.com/seilotte/Blender-Stuff/tree/main/Add-ons/sei_tools",
@@ -311,28 +311,32 @@ class SEI_OT_view3d_pixels_visualizer(SeiOperator, Operator):
     def _setup_shader(self):
         vsh = \
         '''
-        in vec4 position; // zeros
+        /*
+        in vec4 position;
         in vec2 coord;
 
         out vec2 uv;
 
-        uniform mat4 offsets; // vertex_positions
+        uniform mat4 offsets;
         uniform mat4 matrix_custom;
+        */
 
         void main()
         {
-            gl_Position = matrix_custom * (position + offsets[gl_VertexID]);
             uv = coord;
+            gl_Position= matrix_custom * (position + offsets[gl_VertexID]);
         }
         '''
-        
+
         fsh = \
         '''
+        /*
         in vec2 uv;
 
-        out vec4 col0;
-
         uniform sampler2D image0;
+
+        out vec4 col0;
+        */
 
         void main()
         {
@@ -341,7 +345,29 @@ class SEI_OT_view3d_pixels_visualizer(SeiOperator, Operator):
         }
         '''
 
-        return gpu.types.GPUShader(vertexcode = vsh, fragcode = fsh)
+        shader_info = gpu.types.GPUShaderCreateInfo()
+
+        shader_info.vertex_source(vsh)
+        shader_info.fragment_source(fsh)
+
+        # vsh attributes
+        shader_info.vertex_in(0, 'VEC4', 'position')
+        shader_info.vertex_in(1, 'VEC2', 'coord')
+
+        interface_info = gpu.types.GPUStageInterfaceInfo("attrs_out")
+        interface_info.smooth('VEC2', 'uv')
+        shader_info.vertex_out(interface_info)
+
+        # uniforms
+        shader_info.push_constant('MAT4', 'offsets')
+        shader_info.push_constant('MAT4', 'matrix_custom')
+
+        shader_info.sampler(0, 'FLOAT_2D', "image0")
+
+        # write
+        shader_info.fragment_out(0, 'VEC4', 'col0')
+
+        return gpu.shader.create_from_info(shader_info)
 
     def _setup_batch(self, shader):
         return batch_for_shader(
@@ -681,8 +707,9 @@ def SEI_PROPERTIES_HT_header(self, context):
 
     layout.template_header()
 
-#    layout.operator('wm.console_toggle', text='', icon='CONSOLE') # Windows.
     layout.operator('outliner.orphans_purge', text=' ', icon='TRASH') # Purge
+    if bpy.app.build_platform == b'Windows':
+        layout.operator('wm.console_toggle', text='', icon='CONSOLE') # Windows.
 
     layout.separator_spacer()
 
@@ -700,7 +727,7 @@ def SEI_NODE_MT_node_tree_interface_context_menu(self, context):
     self.layout.operator('sei.nodes_hide_sockets_group_inputs', icon='NODE')
     self.layout.operator('sei.nodes_selected_to_origin', icon='RESTRICT_SELECT_OFF')
 
-#===========================
+# ===========================
 
 classes = [
     # Tools > Armature Tools

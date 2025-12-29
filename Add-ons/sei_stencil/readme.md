@@ -18,8 +18,10 @@
 This add-on is confirmed to be compatible with the following Blender versions:
 
 - 4.4.0
+- 5.0.0
 
-> *Note: Issues may arise with other versions.*
+> [!CAUTION]
+> *Issues may arise with other versions.*
 
 ## Documentation
 
@@ -28,13 +30,15 @@ This add-on is confirmed to be compatible with the following Blender versions:
 
 - **Visualizer**  
     Writes the stencil to an image named "_SSTENCIL".  
-    Supported object types: *MESH*
+    Supported object types: *MESH*  
+    Supported attributes: *VERTEX COLOURS*
 
 - **Render Animation**  
     Applies the stencil during rendering.  
     Supports a single-frame render.
 
-> *Note: Ensure the **image** space and coordinates are correctly configured. For the shader editor, use "Non-Color" and "Window Coordinates".*
+> [!IMPORTANT]
+> *Ensure the **image** interpolation and coordinates are correctly configured. For the shader editor, use "Closest" and "Window Coordinates".*
 
 - **Resolution X**  
     Defines the resolution of the scene and stencil along the x-axis.
@@ -45,4 +49,5 @@ This add-on is confirmed to be compatible with the following Blender versions:
 - **Resolution %**  
     Defines the resolution percentage for the scene and stencil.
 
-> *Note: Be sure to set the correct values before rendering.*
+> [!TIP]
+> *Be sure to set the correct values before rendering.*

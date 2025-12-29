@@ -6,8 +6,8 @@ import numpy as np
 bl_info = {
     "name": "Sei Stencil",
     "author": "Seilotte",
-    "version": (1, 0, 0),
-    "blender": (4, 4, 0),
+    "version": (1, 0, 1),
+    "blender": (5, 0, 0),
     "location": "3D View > Properties > Sei",
     "description": "Creates a stencil pass for the viewport and final render.",
     "tracker_url": "https://github.com/seilotte/Blender-Stuff/tree/main/Add-ons/sei_stencil",
@@ -41,6 +41,7 @@ class SEI_OT_view3d_stencil_visualizer(bpy.types.Operator):
     def _setup_shader(self):
         vsh = \
         '''
+        /*
         in vec3 position;
         in vec4 vertex_colour;
 
@@ -48,6 +49,7 @@ class SEI_OT_view3d_stencil_visualizer(bpy.types.Operator):
 
         uniform mat4 viewproj_matrix;
         uniform mat4 obj_matrix;
+        */
 
         void main()
         {
@@ -58,9 +60,11 @@ class SEI_OT_view3d_stencil_visualizer(bpy.types.Operator):
 
         fsh = \
         '''
+        /*
         in vec3 vcol;
 
         out vec4 col0;
+        */
 
         void main()
         {
@@ -68,7 +72,27 @@ class SEI_OT_view3d_stencil_visualizer(bpy.types.Operator):
         }
         '''
 
-        return gpu.types.GPUShader(vertexcode = vsh, fragcode = fsh)
+        shader_info = gpu.types.GPUShaderCreateInfo()
+
+        shader_info.vertex_source(vsh)
+        shader_info.fragment_source(fsh)
+
+        # vsh attributes
+        shader_info.vertex_in(0, 'VEC3', 'position')
+        shader_info.vertex_in(1, 'VEC4', 'vertex_colour')
+
+        interface_info = gpu.types.GPUStageInterfaceInfo("attrs_out")
+        interface_info.smooth('VEC3', 'vcol')
+        shader_info.vertex_out(interface_info)
+
+        # uniforms
+        shader_info.push_constant('MAT4', 'viewproj_matrix')
+        shader_info.push_constant('MAT4', 'obj_matrix')
+
+        # write
+        shader_info.fragment_out(0, 'VEC4', 'col0')
+
+        return gpu.shader.create_from_info(shader_info)
 
     def draw_stencil(self, context, shader, image):
         scene = context.scene
@@ -81,65 +105,64 @@ class SEI_OT_view3d_stencil_visualizer(bpy.types.Operator):
 
         batches_matrices = []
 
-        for coll in [coll] + coll.children_recursive:
-            for obj in coll.objects:
-                if obj.type != 'MESH' \
-                or obj.visible_get() is False:
-                    continue
+        for obj in coll.all_objects:
+            if obj.type != 'MESH' \
+            or obj.visible_get() is False:
+                continue
 
-                # TODO: Use CBlenderMalt for better performance.
-                mesh = obj.evaluated_get(depsgraph).data
+            # TODO: Use CBlenderMalt for better performance.
+            mesh = obj.evaluated_get(depsgraph).data
 
-                if mesh is None \
-                or len(mesh.polygons) < 1:
-                    continue
+            if mesh is None \
+            or len(mesh.polygons) < 1:
+                continue
 
-                vcol = mesh.attributes.get(mesh.attributes.default_color_name)
+            vcol = mesh.attributes.get(mesh.attributes.default_color_name)
 
-                if vcol is None:
-                    vertices = np.empty((len(mesh.vertices), 3), 'f')
-                    indices = np.empty((len(mesh.loop_triangles), 3), 'i')
-                    colours = np.ones((len(mesh.vertices), 3), 'f') # white
+            if vcol is None:
+                vertices = np.empty((len(mesh.vertices), 3), 'f')
+                indices = np.empty((len(mesh.loop_triangles), 3), 'i')
+                colours = np.ones((len(mesh.vertices), 3), 'f') # white
 
-                    mesh.vertices.foreach_get('co', vertices.ravel())
-                    mesh.loop_triangles.foreach_get('vertices', indices.ravel())
+                mesh.vertices.foreach_get('co', vertices.ravel())
+                mesh.loop_triangles.foreach_get('vertices', indices.ravel())
 
-                elif vcol.domain == 'POINT':
-                    vertices = np.empty((len(mesh.vertices), 3), 'f')
-                    indices = np.empty((len(mesh.loop_triangles), 3), 'i')
-                    colours = np.empty((len(vcol.data), 4), 'f')
+            elif vcol.domain == 'POINT':
+                vertices = np.empty((len(mesh.vertices), 3), 'f')
+                indices = np.empty((len(mesh.loop_triangles), 3), 'i')
+                colours = np.empty((len(vcol.data), 4), 'f')
 
-                    mesh.vertices.foreach_get('co', vertices.ravel())
-                    mesh.loop_triangles.foreach_get('vertices', indices.ravel())
-                    vcol.data.foreach_get('color', colours.ravel())
+                mesh.vertices.foreach_get('co', vertices.ravel())
+                mesh.loop_triangles.foreach_get('vertices', indices.ravel())
+                vcol.data.foreach_get('color', colours.ravel())
 
-                elif vcol.domain == 'CORNER':
-                    vertices = np.empty((len(mesh.vertices), 3), 'f')
-                    indices = np.empty((len(mesh.loop_triangles), 3), 'i')
-                    colours = np.empty((len(vcol.data), 4), 'f')
+            elif vcol.domain == 'CORNER':
+                vertices = np.empty((len(mesh.vertices), 3), 'f')
+                indices = np.empty((len(mesh.loop_triangles), 3), 'i')
+                colours = np.empty((len(vcol.data), 4), 'f')
 
-                    mesh.vertices.foreach_get('co', vertices.ravel())
-                    mesh.loop_triangles.foreach_get('loops', indices.ravel())
-                    vcol.data.foreach_get('color', colours.ravel())
+                mesh.vertices.foreach_get('co', vertices.ravel())
+                mesh.loop_triangles.foreach_get('loops', indices.ravel())
+                vcol.data.foreach_get('color', colours.ravel())
 
-                    vertices = vertices[[l.vertex_index for l in mesh.loops]]
+                vertices = vertices[[l.vertex_index for l in mesh.loops]]
 
-                vbo_format = gpu.types.GPUVertFormat()
-                vbo_format.attr_add(
-                    id='position', comp_type='F32', len=len(vertices[0]), fetch_mode='FLOAT')
-                vbo_format.attr_add(
-                    id='vertex_colour', comp_type='F32', len=len(colours[0]), fetch_mode='FLOAT')
+            vbo_format = gpu.types.GPUVertFormat()
+            vbo_format.attr_add(
+                id='position', comp_type='F32', len=len(vertices[0]), fetch_mode='FLOAT')
+            vbo_format.attr_add(
+                id='vertex_colour', comp_type='F32', len=len(colours[0]), fetch_mode='FLOAT')
 
-                vbo = gpu.types.GPUVertBuf(vbo_format, len(vertices))
-                vbo.attr_fill('position', vertices)
-                vbo.attr_fill('vertex_colour', colours)
+            vbo = gpu.types.GPUVertBuf(vbo_format, len(vertices))
+            vbo.attr_fill('position', vertices)
+            vbo.attr_fill('vertex_colour', colours)
 
-                ibo = gpu.types.GPUIndexBuf(type='TRIS', seq=indices)
+            ibo = gpu.types.GPUIndexBuf(type='TRIS', seq=indices)
 
-                batches_matrices.append((
-                    gpu.types.GPUBatch(type='TRIS', buf=vbo, elem=ibo),
-                    obj.matrix_world
-                ))
+            batches_matrices.append((
+                gpu.types.GPUBatch(type='TRIS', buf=vbo, elem=ibo),
+                obj.matrix_world
+            ))
 
         if context and context.region_data.view_perspective != 'CAMERA':
             _, _, width, height = gpu.state.viewport_get()
@@ -280,6 +303,9 @@ class SEI_OT_stencil_render(bpy.types.Operator):
             while stack:
                 current_tree = stack.pop()
 
+                if current_tree is None:
+                    continue
+
                 for node in current_tree.nodes:
                     if node.type == 'GROUP':
                         stack.append(node.node_tree)
@@ -291,6 +317,13 @@ class SEI_OT_stencil_render(bpy.types.Operator):
 
         if not _saved_nodes:
             self.report({'WARNING'}, f'No nodes were found with the image named "{IMAGE_NAME}".')
+
+            # Restore the attributes.
+            coll.hide_render = True
+
+            for obj, value in _saved_attrs_objects:
+                obj.hide_render = value
+
             return {'FINISHED'}
 
         #########
@@ -301,8 +334,7 @@ class SEI_OT_stencil_render(bpy.types.Operator):
 
         # TODO: bpy.ops.render.render() creates the filepath.
         if os.path.exists(org_filepath) is False:
-            self.report({'WARNING'}, f'The specified render filepath does not exist: {org_filepath}')
-            return {'FINISHED'}
+            os.makedirs(org_filepath, exist_ok=True)
 
         directory, filename = os.path.split(org_filepath)
         # name, extension = os.path.splitext(filename)
@@ -418,7 +450,7 @@ class SEI_OT_stencil_render(bpy.types.Operator):
                 (node.image, 'source', 'SEQUENCE'),
 
                 (node.image_user, 'frame_duration', stencil_frames_length),
-                (node.image_user, 'frame_start', 1),
+                (node.image_user, 'frame_start', scene.frame_start),
                 (node.image_user, 'frame_offset', scene.frame_start - 1)
             ]
 
@@ -434,7 +466,7 @@ class SEI_OT_stencil_render(bpy.types.Operator):
         print_message('Rendering.')
 
         if self.render_image:
-            bpy.ops.render.render(write_still=False, use_viewport=True)
+            bpy.ops.render.render(write_still=True, use_viewport=True)
         else:
             bpy.ops.render.render(animation=True, use_viewport=True)
 
