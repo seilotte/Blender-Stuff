@@ -529,7 +529,7 @@ class SEI_PT_tools(SeiPanel, Panel):
             panel.operator('sei.scene_assign_object_name', icon='FILE_TEXT')
 
             panel.prop(obj, 'show_wire', text='Wireframe', icon='MOD_WIREFRAME') \
-            if obj and obj.type == 'MESH' else panel.label()
+            if obj and hasattr(obj, 'show_wire') else panel.label()
 
             panel.operator(
                 'sei.view3d_pixels_visualizer',
