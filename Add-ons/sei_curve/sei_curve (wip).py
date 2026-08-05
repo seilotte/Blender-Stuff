@@ -13,7 +13,7 @@ import gpu
 
 from bpy_extras import view3d_utils
 from gpu_extras.batch import batch_for_shader
-from gpu_extras.presets import draw_circle_2d
+# from gpu_extras.presets import draw_circle_2d
 from mathutils import Vector, Color
 
 bl_info = {
@@ -21,7 +21,7 @@ bl_info = {
     "author": "Seilotte",
     "version": (0, 1, 0),
     "blender": (5, 1, 2),
-    "location": "3D View > Properties > Sei",
+    "location": "3D View > Toolbar > Edit Curve",
     "description": "",
     "tracker_url": "https://github.com/seilotte/Blender-Stuff/tree/main/Add-ons/sei_curve",
     "doc_url": "https://github.com/seilotte/Blender-Stuff/issues",
@@ -1253,10 +1253,10 @@ class SEI_curvenet_tool(bpy.types.WorkSpaceTool):
         layout.prop(props, 'SIZE', slider = True)
         layout.prop(props, 'DEPSGRAPH')
 
-    def draw_cursor(context, tool, xy):
-        props = tool.operator_properties('sei.curvenet')
-
-        draw_circle_2d(xy, (1.0,) * 4, props.SIZE, segments = 32)
+    # def draw_cursor(context, tool, xy):
+    #     props = tool.operator_properties('sei.curvenet')
+    # 
+    #     draw_circle_2d(xy, (1.0,) * 4, props.SIZE, segments = 32)
 
 class SEI_PT_curve(bpy.types.Panel):
     bl_idname = 'SEI_PT_curve'
@@ -1295,12 +1295,12 @@ def register():
     for cls in classes:
         bpy.utils.register_class(cls)
 
-    # bpy.utils.register_tool(SEI_curvenet_tool, separator = True)
+    bpy.utils.register_tool(SEI_curvenet_tool, separator = True)
 
-    try:
-        bpy.utils.register_tool(SEI_curvenet_tool, separator = True)
-    except:
-        pass
+    # try:
+    #     bpy.utils.register_tool(SEI_curvenet_tool, separator = True)
+    # except:
+    #     pass
 
 def unregister():
 

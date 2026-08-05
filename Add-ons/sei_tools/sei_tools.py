@@ -8,8 +8,8 @@ from bpy.types import Operator, Panel, PropertyGroup
 bl_info = {
     "name": "Sei Tools",
     "author": "Seilotte",
-    "version": (1, 5, 0),
-    "blender": (5, 0, 0),
+    "version": (1, 5, 1),
+    "blender": (5, 2, 0),
     "location": "3D View > Properties > Sei",
     "description": "Random collection of tools for my personal use",
     "doc_url": "https://github.com/seilotte/Blender-Stuff/tree/main/Add-ons/sei_tools",
@@ -212,7 +212,10 @@ class SEI_RIG_OT_bone_select_children_recursive(SeiOperator, Operator):
 
     def execute(self, context):
 
-        for bone in context.active_bone.children_recursive:
+        active_bone = context.active_bone if context.mode != 'POSE' else \
+                        context.active_pose_bone
+
+        for bone in active_bone.children_recursive:
             bone.select = True
 
             if context.mode == 'EDIT_ARMATURE':
@@ -717,9 +720,11 @@ def SEI_PROPERTIES_HT_header(self, context):
     layout.popover(panel="PROPERTIES_PT_options", text="")
 
 def SEI_VIEW3D_HT_header(self, context):
-    self.layout.operator(
+    row = self.layout.row(align = True)
+    row.prop(context.space_data.overlay, 'show_wireframes', text='', icon='MOD_WIREFRAME')
+    row.operator(
         'sei.view3d_pixels_visualizer',
-        text = ' ',
+        text = '',
         icon = 'PAUSE' if SEI_OT_view3d_pixels_visualizer._handle else 'TEXTURE_DATA'
     )
 
