@@ -239,7 +239,10 @@ class SEI_OT_bbonenet(bpy.types.Operator):
         if min_vert_ws is None:
             return (mouse_ws, None)
 
-        return (min_vert_ws.copy(), min_vert_normal.copy()) # also face normal?
+        if min_vert_normal is not None:
+            min_vert_normal = (obj_matrix.to_3x3() @ min_vert_normal).copy()
+
+        return (min_vert_ws.copy(), min_vert_normal) # also face normal?
 
     def _setup_bbone(self, context) -> None:
 
@@ -579,7 +582,7 @@ class SEI_OT_bbonenet(bpy.types.Operator):
             area is None
             or mode not in ('EDIT_ARMATURE', 'POSE')
             or tool is None
-            or tool.idname != SEI_bbonenet_tool.bl_idname
+            or tool.idname != SEI_WT_bbonenet.bl_idname
             or event.type == 'WINDOW_DEACTIVATE'
             or (event.type in ('RIGHTMOUSE', 'ESC') and event.value == 'PRESS')
         ):
@@ -627,7 +630,7 @@ class SEI_OT_bbonenet(bpy.types.Operator):
 
         return {'PASS_THROUGH'}
 
-class SEI_bbonenet_tool(bpy.types.WorkSpaceTool):
+class SEI_WT_bbonenet(bpy.types.WorkSpaceTool):
     # ./scripts/startup/bl_ui/space_toolsystem_common.py
     bl_space_type = 'VIEW_3D'
     bl_context_mode = 'POSE' # less cluttered than EDIT_ARMATURE
@@ -656,17 +659,17 @@ class SEI_bbonenet_tool(bpy.types.WorkSpaceTool):
 def register():
 
     bpy.utils.register_class(SEI_OT_bbonenet)
-    # bpy.utils.register_tool(SEI_bbonenet_tool, separator = True)
+    bpy.utils.register_tool(SEI_WT_bbonenet, separator = True)
 
-    try:
-        bpy.utils.register_tool(SEI_bbonenet_tool, separator = True)
-    except:
-        pass
+    # try:
+    #     bpy.utils.register_tool(SEI_WT_bbonenet, separator = True)
+    # except:
+    #     pass
 
 def unregister():
 
     bpy.utils.unregister_class(SEI_OT_bbonenet)
-    bpy.utils.unregister_tool(SEI_bbonenet_tool)
+    bpy.utils.unregister_tool(SEI_WT_bbonenet)
 
 if __name__ == "__main__": # debug; live edit
     register()

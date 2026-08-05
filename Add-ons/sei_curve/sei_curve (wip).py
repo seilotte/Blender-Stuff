@@ -5,6 +5,7 @@ TODO:
     - Mesh: Create the geometry nodes node group.
     - Mesh: Create "radius" (attribute, nodes, vertices).
     - Workspace Tool: Better UI/UX (GPU).
+    - Fix snap radius (setup_nearest_point()), currently world-space.
 '''
 
 import bpy
