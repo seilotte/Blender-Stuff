@@ -8,7 +8,7 @@ from mathutils import Vector, Color
 bl_info = {
     "name": "Sei BBoneNet",
     "author": "Seilotte",
-    "version": (0, 1, 0),
+    "version": (0, 1, 1),
     "blender": (5, 2, 0),
     "location": "3D View > Toolbar > Pose Mode",
     "description": "Construct bendy bones as a net",
@@ -179,7 +179,7 @@ class SEI_OT_bbonenet(bpy.types.Operator):
 
         mouse_ss = Vector((event.mouse_region_x, event.mouse_region_y))
         mouse_ws = view3d_utils.region_2d_to_location_3d(
-            region, rv3d, mouse_ss, Vector((0.0, 0.0, 0.0)))
+            region, rv3d, mouse_ss, rv3d.view_location)
 
         #########
         # Get nearest bone point.
@@ -331,7 +331,7 @@ class SEI_OT_bbonenet(bpy.types.Operator):
             epsilon: float = 1e-4
         ) -> bpy.types.Bone:
 
-            min_dist_sq = self.EPSILON
+            min_dist_sq = self.EPSILON * self.EPSILON
             min_bone = None
 
             for bone in armature.bones:

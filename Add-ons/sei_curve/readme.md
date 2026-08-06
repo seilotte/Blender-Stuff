@@ -16,3 +16,8 @@
 ## Documentation
 
 > TODO
+
+## Credits
+
+- [Fernando De Goes](https://fdegoes.github.io/), William Sheffler, Kurt Fleischer [Curvenet](https://research.pixar.com/docs/2022.SiggraphPapers.GSF.pdf)
+- Mark Meyer, Haeyoung Lee, Alan Barr, Mathieu Desbrun [Barycentric Coordinates](https://geometry.caltech.edu/pubs/MHBD02.pdf)
