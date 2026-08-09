@@ -54,4 +54,4 @@ This add-on is confirmed to be compatible with the following Blender versions:
 > [!TIP]
 > *Automatic Weights operator for initial weighting.*  
 > *Smooth Corrective modifier for improved deformation.*  
-> *Armature constriant for "curve points" (bones).*
+> *Armature constraint for "curve points" (bones).*

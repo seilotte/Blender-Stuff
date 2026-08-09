@@ -8,7 +8,7 @@ from mathutils import Vector
 bl_info = {
     "name": "Sei BBoneNet",
     "author": "Seilotte",
-    "version": (0, 2, 0),
+    "version": (0, 2, 1),
     "blender": (5, 2, 0),
     "location": "3D View > Toolbar > Pose Mode",
     "description": "Construct bézier or bendy bones as a net",
@@ -395,6 +395,12 @@ class SEI_OT_bbonenet(bpy.types.Operator):
             or arm.collections.new('Net_Points', parent = bcoll_net)
         bcoll_handles = arm.collections_all.get('Net_Handles') \
             or arm.collections.new('Net_Handles', parent = bcoll_net)
+        bcoll_handles_lines = (
+            None,
+            if self.B_TYPE != 'BEZIER'
+            else arm.collections_all.get('Net_Handles_Lines')
+            or arm.collections.new('Net_Handles_Lines', parent = bcoll_handles)
+        )
 
         #########
         # Bone.
@@ -787,8 +793,8 @@ class SEI_OT_bbonenet(bpy.types.Operator):
             bcoll_handles.assign(pb_h1)
             bcoll_points.assign(pb_p0)
             bcoll_points.assign(pb_p1)
-            bcoll_handles.assign(pb_h0_line)
-            bcoll_handles.assign(pb_h1_line)
+            bcoll_handles_lines.assign(pb_h0_line)
+            bcoll_handles_lines.assign(pb_h1_line)
 
             pb_none.lock_rotation = \
             pb_none.lock_scale = (True, ) * 3
@@ -832,7 +838,7 @@ class SEI_OT_bbonenet(bpy.types.Operator):
                 constraint = pb.constraints.new('STRETCH_TO')
                 constraint.target = obj
                 constraint.subtarget = bone_names[index + 7] \
-                    if index < len(bone_names) - 8 else pb_p1.name
+                    if index < len(bone_names) - 7 else pb_p1.name
 
             pb_h0.lock_rotation = \
             pb_h0.lock_scale = (True, ) * 3
@@ -1077,7 +1083,7 @@ class SEI_WT_bbonenet(bpy.types.WorkSpaceTool):
         row = layout.row()
         row.ui_units_x = 7
         row.popover('SEI_PT_bbonenet_popover', text = 'Bone',
-            icon = 'BONE_DATA' if props.B_TYPE == 'BENDY' else 'CURVE_DATA')
+            icon = 'BONE_DATA' if props.B_TYPE == 'BENDY' else 'CURVE_BEZCURVE')
 
 # ===========================
 

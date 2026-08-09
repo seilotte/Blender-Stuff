@@ -8,7 +8,7 @@ from bpy.types import Operator, Panel, PropertyGroup
 bl_info = {
     "name": "Sei Tools",
     "author": "Seilotte",
-    "version": (1, 5, 1),
+    "version": (1, 5, 2),
     "blender": (5, 2, 0),
     "location": "3D View > Properties > Sei",
     "description": "Random collection of tools for my personal use",
@@ -90,6 +90,36 @@ class SEI_OT_armature_assign(SeiOperator, Operator):
                     vgroup.name = f'DEF-{vgroup.name}'
 
         return{'FINISHED'}
+
+class SEI_OT_armature_collection_toggle_selection(SeiOperator, Operator):
+    bl_idname = 'sei.armature_collection_toggle_selection'
+    bl_label = 'Toggle Selection'
+    bl_description = 'Disable selection in viewport'
+
+    @classmethod
+    def poll(cls, context):
+
+        mode = context.mode
+        obj = context.active_object
+
+        return (
+            mode != 'EDIT_ARMATURE'
+            and obj
+            and obj.type == 'ARMATURE'
+            and obj.data.collections.active
+        )
+
+    def execute(self, context):
+
+        obj = context.active_object
+        bcoll = obj.data.collections.active
+
+        for bone in bcoll.bones_recursive:
+            bone.hide_select = not bone.hide_select
+
+        self.report({'INFO'}, f'{bcoll.name}: Toggled Selection.')
+
+        return {'FINISHED'}
 
 # Numerical Vertex Weight Visualizer
 #
@@ -704,7 +734,6 @@ class SEI_PT_modifier_profiling(Panel):
 
 ########################### UI Mods
 
-# Restart blender after disabling the addon to restore the class.
 def SEI_PROPERTIES_HT_header(self, context):
     layout = self.layout
 
@@ -729,8 +758,18 @@ def SEI_VIEW3D_HT_header(self, context):
     )
 
 def SEI_NODE_MT_node_tree_interface_context_menu(self, context):
-    self.layout.operator('sei.nodes_hide_sockets_group_inputs', icon='NODE')
-    self.layout.operator('sei.nodes_selected_to_origin', icon='RESTRICT_SELECT_OFF')
+    layout = self.layout
+    layout.separator()
+
+    layout.operator('sei.nodes_hide_sockets_group_inputs', icon = 'NODE')
+    layout.operator('sei.nodes_selected_to_origin', icon = 'RESTRICT_SELECT_OFF')
+
+def SEI_ARMATURE_MT_collection_context_menu(self, context):
+    # NOTE: We cannot modify `template_bone_collection_tree()`.
+    layout = self.layout
+    layout.separator()
+
+    layout.operator('sei.armature_collection_toggle_selection', icon = 'RESTRICT_SELECT_OFF')
 
 # ===========================
 
@@ -738,6 +777,7 @@ classes = [
     # Tools > Armature Tools
     SEI_OT_armature_infront_wire,
     SEI_OT_armature_assign,
+    SEI_OT_armature_collection_toggle_selection,
     # Numerical Vertex Weight Visualizer (Bartius Crouch, CoDEmanX, hikariztw)
     SEI_OT_view3d_weights_visualizer,
 
@@ -766,16 +806,21 @@ def register():
     for cls in classes:
         bpy.utils.register_class(cls)
 
-    bpy.types.PROPERTIES_HT_header.draw = SEI_PROPERTIES_HT_header # Restart blender after disabling the addon to restore the class.
+    bpy.types.PROPERTIES_HT_header.draw_save = bpy.types.PROPERTIES_HT_header.draw
+    bpy.types.PROPERTIES_HT_header.draw = SEI_PROPERTIES_HT_header
     bpy.types.VIEW3D_HT_header.append(SEI_VIEW3D_HT_header)
     bpy.types.NODE_MT_node_tree_interface_context_menu.append(SEI_NODE_MT_node_tree_interface_context_menu)
+    bpy.types.ARMATURE_MT_collection_context_menu.append(SEI_ARMATURE_MT_collection_context_menu)
 
 def unregister():
     for cls in classes:
         bpy.utils.unregister_class(cls)
 
+    bpy.types.PROPERTIES_HT_header.draw = bpy.types.PROPERTIES_HT_header.draw_save
+    del bpy.types.PROPERTIES_HT_header.draw_save
     bpy.types.VIEW3D_HT_header.remove(SEI_VIEW3D_HT_header)
     bpy.types.NODE_MT_node_tree_interface_context_menu.remove(SEI_NODE_MT_node_tree_interface_context_menu)
+    bpy.types.ARMATURE_MT_collection_context_menu.remove(SEI_ARMATURE_MT_collection_context_menu)
 
 if __name__ == "__main__": # debug; live edit
     register()
