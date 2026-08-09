@@ -396,7 +396,7 @@ class SEI_OT_bbonenet(bpy.types.Operator):
         bcoll_handles = arm.collections_all.get('Net_Handles') \
             or arm.collections.new('Net_Handles', parent = bcoll_net)
         bcoll_handles_lines = (
-            None,
+            None
             if self.B_TYPE != 'BEZIER'
             else arm.collections_all.get('Net_Handles_Lines')
             or arm.collections.new('Net_Handles_Lines', parent = bcoll_handles)
