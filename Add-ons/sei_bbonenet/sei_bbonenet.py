@@ -215,7 +215,7 @@ class SEI_OT_bbonenet(bpy.types.Operator):
 
         if self.B_SNAP:
 
-            # TODO; Loop over all armatures?
+            # TODO: Loop over all armatures?
             obj = context.object
             arm = obj.data
 
@@ -413,7 +413,7 @@ class SEI_OT_bbonenet(bpy.types.Operator):
 
                 if (
                     self.B_TYPE == 'BEZIER'
-                    and (bone.name.endswith('_line')
+                    and (bone.name.endswith(('_line', '_h0', '_h1')) # SUFFIX_H0, SUFFIX_H1
                     or bone.name.startswith('BBézier'))
                 ):
                     continue
@@ -443,7 +443,7 @@ class SEI_OT_bbonenet(bpy.types.Operator):
         p0_co, p0_normal = self.point_last # _setup_nearest_point()
         p1_co, p1_normal = self.point_current
 
-        # NOTE: Not before due to `_draw_net()`.
+        # NOTE: Not before due to `_draw_bbonenet()`.
         obj_matrix_inv = obj.matrix_world.inverted()
         obj_matrix_inv_3x3 = obj_matrix_inv.to_3x3()
 
@@ -751,7 +751,6 @@ class SEI_OT_bbonenet(bpy.types.Operator):
                 else:
                     eb_b = arm.edit_bones.new(name = f'{eb.name}_{i}')
 
-                # eb_b.name = f'B{eb_b.name}' # for get_nearest_bone()
                 eb_b.use_deform = True
                 eb_b.bbone_x = \
                 eb_b.bbone_z = \
@@ -1024,7 +1023,7 @@ class SEI_PT_bbonenet_popover(bpy.types.Panel):
 
     def draw(self, context):
 
-        # NOTE: `WorkSpaceTool` is 'VIEW_3D'.
+        # NOTE: `WorkSpaceTool` is `VIEW_3D`.
         mode = context.mode
         tool = context.workspace.tools.from_space_view3d_mode(mode)
 
@@ -1078,7 +1077,7 @@ class SEI_WT_bbonenet(bpy.types.WorkSpaceTool):
         row = layout.row()
         row.ui_units_x = 7
         row.popover('SEI_PT_bbonenet_popover', text = 'Bone',
-            icon = 'BONE_DATA' if props.B_TYPE == 'BBONE' else 'CURVE_DATA')
+            icon = 'BONE_DATA' if props.B_TYPE == 'BENDY' else 'CURVE_DATA')
 
 # ===========================
 
