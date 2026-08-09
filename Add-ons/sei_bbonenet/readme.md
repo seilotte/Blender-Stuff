@@ -52,5 +52,5 @@ This add-on is confirmed to be compatible with the following Blender versions:
     Defines whether to use *Vertex* or *Face* normals for the new bone if available.
 
     > [!TIP]
-    > *Use Automatic Weights.*
+    > *Use Automatic Weights.*  
     > *Use Smooth Corrective for better deformation.*
