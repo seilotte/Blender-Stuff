@@ -5,7 +5,7 @@ TODO:
     - Mesh: Create the geometry nodes node group.
     - Mesh: Create "radius" (attribute, nodes, vertices).
     - Workspace Tool: Better UI/UX (GPU).
-    - Fix snap radius (setup_nearest_point()), currently world-space.
+        - Fix snap radius (setup_nearest_point()), currently world-space.
 '''
 
 import bpy
@@ -22,7 +22,7 @@ bl_info = {
     "author": "Seilotte",
     "version": (0, 1, 0),
     "blender": (5, 1, 2),
-    "location": "3D View > Toolbar > Edit Curve",
+    "location": "3D View > Properties > Sei",
     "description": "",
     "tracker_url": "https://github.com/seilotte/Blender-Stuff/tree/main/Add-ons/sei_curve",
     "doc_url": "https://github.com/seilotte/Blender-Stuff/issues",
