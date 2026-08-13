@@ -15,13 +15,13 @@ from mathutils import Vector
 bl_info = {
     "name": "Sei SurfaceNet",
     "author": "Seilotte",
-    "version": (0, 2, 1),
+    "version": (0, 1, 0),
     "blender": (5, 2, 0),
     "location": "3D View > Toolbar > Edit Mode",
     "description": "Construct nurbs surfaces as a net",
-    "tracker_url": "https://github.com/seilotte/Blender-Stuff/tree/main/Add-ons/sei_curve",
+    "tracker_url": "https://github.com/seilotte/Blender-Stuff/tree/main/Add-ons/sei_net",
     "doc_url": "https://github.com/seilotte/Blender-Stuff/issues",
-    "category": "Rigging",
+    "category": "Workflow",
 }
 
 DEBUG_MODE = False
@@ -477,9 +477,10 @@ class SEI_OT_surfacenet(bpy.types.Operator):
         if (
             obj_armature is None
             or obj_armature.type != 'ARMATURE'
+            or obj_armature.visible_get() is False
             or arm is None
         ):
-            self.report({'INFO'}, 'No armature found.')
+            self.report({'INFO'}, 'Armature not found.')
             return None
 
         setup_modifiers(obj_surface, obj_armature)
@@ -845,10 +846,14 @@ class SEI_OT_surfacenet(bpy.types.Operator):
         p0, p1, p2, p3 = (p[0] for p in points)
         normal = (p1 - p0).cross(p2 - p0)
 
-        if normal.z < 0.0:
+        rv3d = context.region_data
+        view_vector = rv3d.view_rotation @ Vector((0.0, 0.0, -1.0))
+
+        # TODO: Use mesh normal if available.
+        if normal.dot(view_vector) > 0.0:
             points = [points[0], points[3], points[2], points[1]]
 
-        del p0, p1, p2, p3, normal
+        del p0, p1, p2, p3, normal, rv3d, view_vector
 
         #########
         # Points.

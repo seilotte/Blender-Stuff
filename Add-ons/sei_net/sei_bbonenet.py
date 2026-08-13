@@ -12,9 +12,9 @@ bl_info = {
     "blender": (5, 2, 0),
     "location": "3D View > Toolbar > Pose Mode",
     "description": "Construct bézier or bendy bones as a net",
-    "tracker_url": "https://github.com/seilotte/Blender-Stuff/tree/main/Add-ons/sei_bbonenet",
+    "tracker_url": "https://github.com/seilotte/Blender-Stuff/tree/main/Add-ons/sei_net",
     "doc_url": "https://github.com/seilotte/Blender-Stuff/issues",
-    "category": "Rigging",
+    "category": "Workflow",
 }
 
 DEBUG_MODE = False

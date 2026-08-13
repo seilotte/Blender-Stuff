@@ -18,13 +18,13 @@ from gpu_extras.batch import batch_for_shader
 from mathutils import Vector, Color
 
 bl_info = {
-    "name": "Sei Curve",
+    "name": "Sei CurveNet",
     "author": "Seilotte",
     "version": (0, 1, 0),
     "blender": (5, 1, 2),
     "location": "3D View > Properties > Sei",
     "description": "",
-    "tracker_url": "https://github.com/seilotte/Blender-Stuff/tree/main/Add-ons/sei_curve",
+    "tracker_url": "https://github.com/seilotte/Blender-Stuff/tree/main/Add-ons/sei_net",
     "doc_url": "https://github.com/seilotte/Blender-Stuff/issues",
     "category": "Workflow",
 }
