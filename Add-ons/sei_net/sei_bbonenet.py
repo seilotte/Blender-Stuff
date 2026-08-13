@@ -8,7 +8,7 @@ from mathutils import Vector
 bl_info = {
     "name": "Sei BBoneNet",
     "author": "Seilotte",
-    "version": (0, 2, 1),
+    "version": (0, 2, 2),
     "blender": (5, 2, 0),
     "location": "3D View > Toolbar > Pose Mode",
     "description": "Construct bézier or bendy bones as a net",
@@ -80,7 +80,7 @@ class SEI_OT_bbonenet(bpy.types.Operator):
     B_EPSILON: bpy.props.FloatProperty(
         name = 'Merge Distance',
         description = 'Maximum distance between elements to merge',
-        default = 1e-3,
+        default = 1e-4,
         min = 1e-6, # NOTE: Limit is defined by bone envelopes.
         subtype = 'DISTANCE'
     )
@@ -364,8 +364,9 @@ class SEI_OT_bbonenet(bpy.types.Operator):
             ),
             'diamond': mesh_create(
                 name = 'WGT-Diamond',
-                vertices = [(-0.5, 0.0, 0.0), (0.0, 0.0, -0.5), (0.5, 0.0, 0.0), (0.0, 0.0, 0.5), (0.0, -0.5, 0.0), (0.0, 0.5, 0.0), (0.0, 0.8, 0.0)],
-                edges = [[0, 4], [4, 3], [3, 0], [3, 5], [5, 0], [0, 1], [1, 4], [5, 1], [2, 3], [4, 2], [2, 5], [1, 2], [5, 6]]
+                vertices = [(-0.5, 0.0, 0.0), (0.0, 0.5, 0.0), (0.5, 0.0, 0.0), (0.0, -0.5, 0.0), (0.0, 0.0, -0.5), (0.0, 0.0, 0.5), (0.0, 0.8, 0.0)],
+                edges = [(0, 4), (4, 3), (3, 0), (3, 5), (5, 0), (0, 1), (1, 4), (5, 1), (2, 3), (4, 2), (2, 5), (1, 2), (1, 6)],
+                faces = [(0, 4, 3), (0, 3, 5), (0, 1, 4), (0, 5, 1), (2, 3, 4), (2, 5, 3), (1, 2, 4), (1, 5, 2)]
             ),
         }
 
@@ -1052,7 +1053,7 @@ class SEI_PT_bbonenet_popover(bpy.types.Panel):
 
         col.separator()
 
-        col.prop(props, 'B_EPSILON')
+        col.prop(props, 'B_EPSILON', text = 'Merge')
         col.row().prop(props, 'B_SNAP_TYPE', text = 'Normal', expand = True)
 
 class SEI_WT_bbonenet(bpy.types.WorkSpaceTool):

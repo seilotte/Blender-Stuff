@@ -1,10 +1,3 @@
-'''
-TODO:
-    - Clean-up.
-    - Support Triangles and N-Gons.
-    - Figure out why it is not the same as a quad bézier patch.
-'''
-
 import bpy
 import gpu
 
@@ -15,7 +8,7 @@ from mathutils import Vector
 bl_info = {
     "name": "Sei SurfaceNet",
     "author": "Seilotte",
-    "version": (0, 1, 0),
+    "version": (0, 1, 1),
     "blender": (5, 2, 0),
     "location": "3D View > Toolbar > Edit Mode",
     "description": "Construct nurbs surfaces as a net",
@@ -292,23 +285,38 @@ class SEI_OT_surfacenet(bpy.types.Operator):
 
         depsgraph = context.evaluated_depsgraph_get()
 
-        _, _, _, _, hit_obj, _ = context.scene.ray_cast(
-            depsgraph, ro_ws, rd_ws)
+        # NOTE: There is no way to only do
+        # `scene.ray_cast()` against `MESH`.
+        hit_ws = \
+        hit_face_normal = \
+        hit_face_index = None
 
-        if hit_obj is None or hit_obj.type != 'MESH':
+        for dup in depsgraph.object_instances:
+
+            obj = dup.instance_object if dup.is_instance else dup.object
+
+            if obj.type != 'MESH':
+                continue
+
+            obj_matrix = obj.matrix_world
+            obj_matrix_inv = obj_matrix.inverted()
+
+            _, hit_ls, normal, index = obj.ray_cast(
+                obj_matrix_inv @ ro_ws, obj_matrix_inv.to_3x3() @ rd_ws)
+
+            if index < 0: # no hit
+                continue
+
+            hit_ws = obj_matrix @ hit_ls
+            hit_face_normal = normal
+            hit_face_index = index
+
+            break
+
+        if hit_face_index is None: # no hit
             return (mouse_ws, None)
 
-        obj = hit_obj.evaluated_get(depsgraph)
-        obj_matrix = obj.matrix_world
-        obj_matrix_inv = obj.matrix_world.inverted()
-
-        _, hit_ls, hit_face_normal, hit_face_index = obj.ray_cast(
-            obj_matrix_inv @ ro_ws, obj_matrix_inv.to_3x3() @ rd_ws)
-
-        if hit_face_index < 0: # no hit
-            return (mouse_ws, None)
-
-        mouse_ws = obj_matrix @ hit_ls
+        mouse_ws = hit_ws.copy()
 
         min_dist_sq = self.SIZE_PX * self.SIZE_PX
         min_vert_ws = None
@@ -424,7 +432,7 @@ class SEI_OT_surfacenet(bpy.types.Operator):
                 'diamond': mesh_create(
                     name = 'WGT-Diamond',
                     vertices = [(-0.5, 0.0, 0.0), (0.0, 0.5, 0.0), (0.5, 0.0, 0.0), (0.0, -0.5, 0.0), (0.0, 0.0, -0.5), (0.0, 0.0, 0.5), (0.0, 0.8, 0.0)],
-                    edges = [(0, 4), (4, 3), (3, 0), (3, 5), (5, 0), (0, 1), (1, 4), (5, 1), (2, 3), (4, 2), (2, 5), (1, 2), (2, 6)],
+                    edges = [(0, 4), (4, 3), (3, 0), (3, 5), (5, 0), (0, 1), (1, 4), (5, 1), (2, 3), (4, 2), (2, 5), (1, 2), (1, 6)],
                     faces = [(0, 4, 3), (0, 3, 5), (0, 1, 4), (0, 5, 1), (2, 3, 4), (2, 5, 3), (1, 2, 4), (1, 5, 2)]
                 ),
             }
@@ -444,32 +452,33 @@ class SEI_OT_surfacenet(bpy.types.Operator):
             return map_wgt
 
         @staticmethod
-        def get_nearest_bone(
+        def get_nearest_edit_bone(
             armature: bpy.types.Armature,
             position: Vector,
             epsilon: float = 1e-4
-        ) -> bpy.types.Bone:
+        ) -> bpy.types.EditBone:
 
             min_dist_sq = epsilon * epsilon
-            min_bone = None
+            min_ebone = None
 
-            for bone in armature.bones:
+            for ebone in armature.edit_bones:
 
-                if bone.name.endswith(('_line', '_h')): # SUFFIX_H
+                if ebone.name.endswith('_line'):
                     continue
 
-                dist_sq = (bone.head - position).length_squared
+                dist_sq = (ebone.head - position).length_squared
 
                 if dist_sq > min_dist_sq:
                     continue
 
                 min_dist_sq = dist_sq
-                min_bone = bone
+                min_ebone = ebone
 
-            return min_bone
+            return min_ebone
 
         #########
-        # Get armature.
+        # Armature.
+        # TODO: Delete the respective bones when a spline is deleted.
 
         obj_armature = bpy.data.objects.get(self.S_ARMATURE)
         arm = getattr(obj_armature, 'data', None)
@@ -509,9 +518,8 @@ class SEI_OT_surfacenet(bpy.types.Operator):
         COL_SELECT = (0.6, 0.9, 1.0)
         COL_ACTIVE = (0.7, 1.0, 1.0)
 
-        COL_NET = (1.0, 1.0, 1.0)
-        COL_HANDLE = (1.0, 1.0, 0.0)
         COL_POINT = (0.0, 1.0, 1.0)
+        COL_HANDLE = (1.0, 1.0, 0.0)
 
         #########
         # Edit mode (armature).
@@ -574,15 +582,15 @@ class SEI_OT_surfacenet(bpy.types.Operator):
 
         for index, name, scale in data:
 
+            # TODO: Find surface bones instead of nearest.
             co = points[index]
-            b = get_nearest_bone(arm, co, self.B_EPSILON)
+            eb_near = get_nearest_edit_bone(arm, co, self.B_EPSILON)
 
-            eb = arm.edit_bones.get(getattr(b, 'name', '')) \
-                or arm.edit_bones.new(name = name)
+            eb = eb_near or arm.edit_bones.new(name = name)
 
             bone_names.append(eb.name)
 
-            if b is not None:
+            if eb_near is not None:
                 continue
 
             eb.head = co
@@ -624,6 +632,9 @@ class SEI_OT_surfacenet(bpy.types.Operator):
 
         # handles lines
         for eb_to in (eb_01, eb_10, eb_20, eb_31, eb_32, eb_23, eb_13, eb_02):
+
+            if arm.edit_bones.get(f'{eb.name}_line'):
+                continue
 
             # eb_to = None
             eb_from = eb_to.parent
@@ -844,7 +855,7 @@ class SEI_OT_surfacenet(bpy.types.Operator):
         # Counter-clockwise.
 
         p0, p1, p2, p3 = (p[0] for p in points)
-        normal = (p1 - p0).cross(p2 - p0)
+        normal = (p1 - p0).cross(p2 - p0).normalized()
 
         rv3d = context.region_data
         view_vector = rv3d.view_rotation @ Vector((0.0, 0.0, -1.0))
@@ -857,6 +868,7 @@ class SEI_OT_surfacenet(bpy.types.Operator):
 
         #########
         # Points.
+        # TODO: Find points of surfaces for continuity.
 
         # NOTE: Not before due to `_draw_surfacenet()`.
         obj_matrix_inv = obj_surface.matrix_world.inverted()
