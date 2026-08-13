@@ -633,7 +633,7 @@ class SEI_OT_surfacenet(bpy.types.Operator):
         # handles lines
         for eb_to in (eb_01, eb_10, eb_20, eb_31, eb_32, eb_23, eb_13, eb_02):
 
-            if arm.edit_bones.get(f'{eb.name}_line'):
+            if arm.edit_bones.get(f'{eb_to.name}_line'):
                 continue
 
             # eb_to = None
